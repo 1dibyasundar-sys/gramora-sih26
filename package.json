@@ -1,0 +1,40 @@
+{
+  "name": "smart-agri-marketplace",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --env-file=.env.local src/server/__tests__/phase2-security.test.ts && tsx --env-file=.env.local src/server/__tests__/firebase-readiness.test.ts && cross-env LIVE_FIREBASE_TESTS=true tsx --env-file=.env.local src/server/__tests__/live-firebase-verify.ts && tsx --env-file=.env.local src/server/__tests__/product-domain.test.ts && tsx --env-file=.env.local src/server/__tests__/inventory-transaction.test.ts && tsx --env-file=.env.local src/server/__tests__/product-api-security.test.ts && tsx --env-file=.env.local src/server/__tests__/order-domain.test.ts && tsx --env-file=.env.local src/server/__tests__/order-transaction.test.ts && tsx --env-file=.env.local src/server/__tests__/order-api-security.test.ts && tsx --env-file=.env.local src/server/__tests__/cloudinary-security.test.ts && cross-env LIVE_FIREBASE_TESTS=true tsx --env-file=.env.local src/server/__tests__/admin-security.test.ts && cross-env LIVE_FIREBASE_TESTS=true tsx --env-file=.env.local src/server/__tests__/live-cloudinary-verify.ts && tsx --env-file=.env.local src/server/__tests__/payment-escrow.test.ts",
+    "cleanup:test-products": "cross-env LIVE_FIREBASE_TESTS=true tsx --env-file=.env.local src/server/scripts/cleanup-test-products.ts",
+    "seed:demo-catalog": "cross-env LIVE_FIREBASE_TESTS=true tsx --env-file=.env.local src/server/scripts/seed-demo-catalog.ts"
+  },
+  "dependencies": {
+    "cloudinary": "^2.11.0",
+    "clsx": "^2.1.1",
+    "firebase": "^12.19.0",
+    "firebase-admin": "^14.4.0",
+    "lucide-react": "^0.453.0",
+    "next": "14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.5.4",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.0",
+    "@types/react": "^18.3.11",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "cross-env": "^10.1.0",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "14.2.15",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14",
+    "tsx": "^4.23.13",
+    "typescript": "^5.6.3"
+  }
+}

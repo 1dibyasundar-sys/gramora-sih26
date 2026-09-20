@@ -1,0 +1,73 @@
+import { DemandForecast } from '@/types';
+
+export const MOCK_FORECASTS: DemandForecast[] = [
+  {
+    crop: 'Nashik Red Onions',
+    variety: 'Garwa / N-53',
+    currentMandiPrice: 28,
+    predictedPriceNextMonth: 36,
+    priceDeltaPercent: 28.5,
+    demandTrend: 'surging',
+    confidenceScorePercent: 89,
+    optimalHarvestWindow: 'Next 10-18 Days (Pre-Monsoon Peak)',
+    advisoryNote: 'Estimated seasonal arrivals in northern mandis will decrease by ~32% next month. Storing dried Garwa stock in well-ventilated structures for 20 days is predicted to yield 25-30% higher net margins.',
+    historicalTrend: [
+      { date: 'Nov 2025', price: 21, demandIndex: 65 },
+      { date: 'Dec 2025', price: 23, demandIndex: 70 },
+      { date: 'Jan 2026', price: 25, demandIndex: 78 },
+      { date: 'Feb 2026', price: 26, demandIndex: 82 },
+      { date: 'Mar 2026 (Current)', price: 28, demandIndex: 88 },
+    ],
+    forecastTrend: [
+      { date: 'Apr 2026 (Est.)', price: 32, demandIndex: 94, confidenceLow: 29, confidenceHigh: 35 },
+      { date: 'May 2026 (Est.)', price: 36, demandIndex: 96, confidenceLow: 32, confidenceHigh: 40 },
+      { date: 'Jun 2026 (Est.)', price: 39, demandIndex: 91, confidenceLow: 34, confidenceHigh: 44 },
+    ],
+  },
+  {
+    crop: 'Hybrid Roma Tomatoes',
+    variety: 'Abhinav 1057',
+    currentMandiPrice: 19,
+    predictedPriceNextMonth: 15,
+    priceDeltaPercent: -21.0,
+    demandTrend: 'declining',
+    confidenceScorePercent: 84,
+    optimalHarvestWindow: 'Immediate Harvest & Cold Storage Dispatch',
+    advisoryNote: 'Southern plateau harvest influx anticipated within 3 weeks. Direct sale or food-processing bulk contract commitments are strongly advised now to lock in current price levels.',
+    historicalTrend: [
+      { date: 'Nov 2025', price: 16, demandIndex: 60 },
+      { date: 'Dec 2025', price: 24, demandIndex: 85 },
+      { date: 'Jan 2026', price: 28, demandIndex: 90 },
+      { date: 'Feb 2026', price: 22, demandIndex: 75 },
+      { date: 'Mar 2026 (Current)', price: 19, demandIndex: 68 },
+    ],
+    forecastTrend: [
+      { date: 'Apr 2026 (Est.)', price: 15, demandIndex: 58, confidenceLow: 12, confidenceHigh: 18 },
+      { date: 'May 2026 (Est.)', price: 14, demandIndex: 52, confidenceLow: 11, confidenceHigh: 17 },
+      { date: 'Jun 2026 (Est.)', price: 22, demandIndex: 72, confidenceLow: 18, confidenceHigh: 26 },
+    ],
+  },
+  {
+    crop: 'Sona Masoori Raw Rice',
+    variety: 'BPT 5204',
+    currentMandiPrice: 52,
+    predictedPriceNextMonth: 56,
+    priceDeltaPercent: 7.7,
+    demandTrend: 'stable',
+    confidenceScorePercent: 93,
+    optimalHarvestWindow: 'Steady Dispersal across Q2',
+    advisoryNote: 'Stable institutional and urban retail demand expected. Premium 12-month aged lots will command a steady 8-12% premium over freshly milled paddy.',
+    historicalTrend: [
+      { date: 'Nov 2025', price: 48, demandIndex: 74 },
+      { date: 'Dec 2025', price: 49, demandIndex: 75 },
+      { date: 'Jan 2026', price: 50, demandIndex: 76 },
+      { date: 'Feb 2026', price: 51, demandIndex: 77 },
+      { date: 'Mar 2026 (Current)', price: 52, demandIndex: 79 },
+    ],
+    forecastTrend: [
+      { date: 'Apr 2026 (Est.)', price: 54, demandIndex: 81, confidenceLow: 51, confidenceHigh: 57 },
+      { date: 'May 2026 (Est.)', price: 56, demandIndex: 83, confidenceLow: 53, confidenceHigh: 59 },
+      { date: 'Jun 2026 (Est.)', price: 57, demandIndex: 84, confidenceLow: 54, confidenceHigh: 61 },
+    ],
+  },
+];
