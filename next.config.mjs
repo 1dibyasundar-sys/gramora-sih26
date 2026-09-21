@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    serverComponentsExternalPackages: ['firebase-admin'],
+  },
   images: {
     domains: ['images.unsplash.com', 'res.cloudinary.com'],
     remotePatterns: [
