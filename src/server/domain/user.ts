@@ -63,9 +63,10 @@ const locationSchema = z.object({
   pincode: z.string().regex(/^\d{6}$/, 'Pincode must be a 6-digit number'),
 });
 
-const farmerProfileSchema = z.object({
-  kisanId: z.string().min(1).max(50),
+export const farmerProfileSchema = z.object({
+  kisanId: z.string().min(1).max(50).optional(),
   landHoldingAcres: z.number().positive().optional(),
+  landArea: z.number().positive().optional(),
   primaryCrops: z.array(z.string().max(50)).optional(),
 });
 
@@ -130,8 +131,9 @@ export const OnboardingSchema = z
           message: 'Invalid onboarding role. Self-assignment of administrative roles is prohibited.',
         }
       ),
-    name: z.string().min(2, 'Name must be at least 2 characters').max(100),
+    name: z.string().max(100).optional(),
     phone: z.string().regex(/^\+?[0-9\s-]{10,15}$/, 'Invalid phone number format').optional(),
+    email: z.string().email('Invalid email address').optional(),
     organization: z.string().max(150).optional(),
     location: locationSchema.optional(),
     avatarUrl: z.string().url('Avatar must be a valid URL').optional(),

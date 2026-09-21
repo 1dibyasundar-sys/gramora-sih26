@@ -37,7 +37,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             ref={ref}
             disabled={disabled}
             className={cn(
-              'w-full appearance-none bg-surface-primary/80 border border-surface-border text-foreground text-body-sm rounded-md px-3.5 py-2.5 pr-10 transition-all duration-200 outline-none focus:border-primary-500/80 focus:ring-1 focus:ring-primary-500/80 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer',
+              'w-full appearance-none bg-white border border-surface-border text-gray-900 text-body-sm rounded-md px-3.5 py-2.5 pr-10 transition-all duration-200 outline-none focus:border-primary-500/80 focus:ring-1 focus:ring-primary-500/80 focus:text-gray-900 disabled:bg-gray-100 disabled:text-gray-500 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer',
               error && 'border-error focus:border-error focus:ring-error',
               className
             )}
@@ -48,13 +48,13 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
                 key={opt.value}
                 value={opt.value}
                 disabled={opt.disabled}
-                className="bg-surface-elevated text-foreground"
+                className={opt.disabled ? 'bg-white text-gray-400' : 'bg-white text-gray-900'}
               >
                 {opt.label}
               </option>
             ))}
           </select>
-          <div className="absolute right-3.5 text-foreground/40 pointer-events-none flex items-center">
+          <div className="absolute right-3.5 text-gray-500 pointer-events-none flex items-center">
             <ChevronDown className="w-4 h-4" />
           </div>
         </div>

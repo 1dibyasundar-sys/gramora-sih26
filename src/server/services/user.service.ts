@@ -96,10 +96,25 @@ export class UserService {
     const now = new Date().toISOString();
     const today = now.split('T')[0];
 
+    // Resolve farmer land area
+    let resolvedFarmerProfile = input.farmerProfile;
+    if (resolvedFarmerProfile) {
+      const acres = resolvedFarmerProfile.landHoldingAcres ?? resolvedFarmerProfile.landArea;
+      resolvedFarmerProfile = {
+        ...resolvedFarmerProfile,
+        landHoldingAcres: acres,
+      };
+    }
+
+    const defaultName =
+      input.name ||
+      authUser.email?.split('@')[0] ||
+      (input.phone ? `User ${input.phone.replace(/\D/g, '').slice(-4)}` : 'Gramora Member');
+
     const profileData: Omit<ServerUserProfile, 'id' | 'uid' | 'createdAt' | 'updatedAt'> = {
-      email: authUser.email || `${authUser.uid}@unverified.agrimarket.in`,
+      email: input.email || authUser.email || `${authUser.uid}@unverified.agrimarket.in`,
       role: canonicalRole,
-      name: input.name,
+      name: defaultName,
       phone: input.phone,
       organization: input.organization,
       location: input.location,
@@ -108,14 +123,14 @@ export class UserService {
       status: 'active',
       joinedDate: today,
       rating: 5.0,
-      farmerProfile: input.farmerProfile,
+      farmerProfile: resolvedFarmerProfile,
       fpoProfile: input.fpoProfile,
       buyerProfile: input.buyerProfile,
       consumerProfile: input.consumerProfile,
       logisticsProfile: input.logisticsProfile,
-      kisanId: input.kisanId,
-      fpoRegNumber: input.fpoRegNumber,
-      gstin: input.gstin,
+      kisanId: input.kisanId || resolvedFarmerProfile?.kisanId,
+      fpoRegNumber: input.fpoRegNumber || input.fpoProfile?.fpoRegNumber,
+      gstin: input.gstin || input.buyerProfile?.gstin,
     };
 
     logger.info('Creating authoritative user profile upon onboarding', {

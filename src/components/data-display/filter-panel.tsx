@@ -3,10 +3,10 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { ProductCategory, ProductFilterOptions, QualityGrade } from '@/types';
-import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select } from '@/components/ui/select';
 import { Filter, RotateCcw } from 'lucide-react';
+import { useTranslation } from '@/i18n';
 
 export interface FilterPanelProps {
   filters: ProductFilterOptions;
@@ -15,25 +15,27 @@ export interface FilterPanelProps {
   className?: string;
 }
 
-const CATEGORIES: { label: string; value: ProductCategory | 'all' }[] = [
-  { label: 'All Categories', value: 'all' },
-  { label: 'Vegetables', value: 'vegetables' },
-  { label: 'Fruits', value: 'fruits' },
-  { label: 'Grains & Cereals', value: 'grains' },
-  { label: 'Pulses & Legumes', value: 'pulses' },
-  { label: 'Spices', value: 'spices' },
-  { label: 'Oilseeds', value: 'oilseeds' },
-];
-
-const GRADES: { label: string; value: QualityGrade | '' }[] = [
-  { label: 'All Grades', value: '' },
-  { label: 'Grade A (Export)', value: 'Grade A (Export)' },
-  { label: 'Grade A', value: 'Grade A' },
-  { label: 'Grade B', value: 'Grade B' },
-  { label: 'Organic Certified', value: 'Organic Certified' },
-];
-
 export function FilterPanel({ filters, onChange, onReset, className }: FilterPanelProps) {
+  const { t } = useTranslation();
+
+  const categories: { label: string; value: ProductCategory | 'all' }[] = [
+    { label: t('marketplace.allCategories'), value: 'all' },
+    { label: t('marketplace.vegetables'), value: 'vegetables' },
+    { label: t('marketplace.fruits'), value: 'fruits' },
+    { label: t('marketplace.grains'), value: 'grains' },
+    { label: t('marketplace.pulses'), value: 'pulses' },
+    { label: t('marketplace.spices'), value: 'spices' },
+    { label: t('marketplace.oilseeds'), value: 'oilseeds' },
+  ];
+
+  const grades: { label: string; value: QualityGrade | '' }[] = [
+    { label: t('common.all'), value: '' },
+    { label: t('marketplace.gradeAExport'), value: 'Grade A (Export)' },
+    { label: t('marketplace.gradeA'), value: 'Grade A' },
+    { label: t('marketplace.gradeB'), value: 'Grade B' },
+    { label: t('marketplace.organicCertified'), value: 'Organic Certified' },
+  ];
+
   return (
     <div
       className={cn(
@@ -44,24 +46,24 @@ export function FilterPanel({ filters, onChange, onReset, className }: FilterPan
       <div className="flex items-center justify-between pb-3 border-b border-surface-border">
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-primary-400" />
-          <h3 className="text-body font-bold text-foreground">Filter Produce</h3>
+          <h3 className="text-body font-bold text-foreground">{t('common.filter')}</h3>
         </div>
         <button
           onClick={onReset}
           className="text-caption font-semibold text-foreground/50 hover:text-primary-400 flex items-center gap-1 transition-colors"
         >
           <RotateCcw className="w-3 h-3" />
-          Reset
+          {t('common.clearFilters')}
         </button>
       </div>
 
       {/* Category selector */}
       <div className="space-y-2">
         <label className="text-label text-foreground/70 uppercase text-[11px] font-bold tracking-wider">
-          Category
+          {t('marketplace.allCategories')}
         </label>
         <div className="flex flex-col gap-1">
-          {CATEGORIES.map((cat) => {
+          {categories.map((cat) => {
             const isSelected = (filters.category || 'all') === cat.value;
             return (
               <button
@@ -90,7 +92,7 @@ export function FilterPanel({ filters, onChange, onReset, className }: FilterPan
       {/* Price Range */}
       <div className="space-y-2.5">
         <label className="text-label text-foreground/70 uppercase text-[11px] font-bold tracking-wider">
-          Max Price (₹ / unit)
+          {t('marketplace.priceRange')}
         </label>
         <div className="flex items-center gap-3">
           <input
@@ -111,8 +113,8 @@ export function FilterPanel({ filters, onChange, onReset, className }: FilterPan
       {/* Quality Grade */}
       <div className="space-y-2">
         <Select
-          label="Quality Grade"
-          options={GRADES}
+          label={t('marketplace.qualityGrade')}
+          options={grades}
           value={filters.qualityGrade || ''}
           onChange={(e) => onChange({ ...filters, qualityGrade: (e.target.value as QualityGrade) || undefined })}
         />
@@ -123,8 +125,8 @@ export function FilterPanel({ filters, onChange, onReset, className }: FilterPan
         <Switch
           checked={!!filters.organicOnly}
           onChange={(checked) => onChange({ ...filters, organicOnly: checked })}
-          label="Certified Organic Only"
-          description="Verified NPOP / Jaivik Bharat crops"
+          label={t('marketplace.organicCertified')}
+          description="Verified NPOP / Jaivik Bharat"
         />
       </div>
     </div>

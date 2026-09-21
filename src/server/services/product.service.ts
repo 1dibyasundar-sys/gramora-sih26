@@ -47,6 +47,13 @@ export class ProductService {
     const sellerType = user.role === 'fpo' ? 'fpo' : 'farmer';
     const now = new Date().toISOString();
 
+    const availableQty =
+      typeof input.totalAvailableQuantity === 'number' && input.totalAvailableQuantity > 0
+        ? input.totalAvailableQuantity
+        : typeof (input as any).initialQuantity === 'number' && (input as any).initialQuantity > 0
+        ? (input as any).initialQuantity
+        : input.totalAvailableQuantity || 0;
+
     const productRecord: Omit<ServerProduct, 'id' | 'createdAt' | 'updatedAt'> = {
       ...input,
       marketMandiPrice: input.marketMandiPrice ?? Math.round(input.pricePerUnit * 1.3),
@@ -57,7 +64,7 @@ export class ProductService {
       sellerVerified: user.verified,
       pricePerUnitPaise,
       listingStatus: input.listingStatus || 'active',
-      totalAvailableQuantity: input.totalAvailableQuantity || 0,
+      totalAvailableQuantity: availableQty,
       tags: input.tags || [],
       images: input.images || [],
     };
@@ -66,12 +73,12 @@ export class ProductService {
       sellerId: user.uid,
       title: input.title,
       category: input.category,
-      initialQuantity: input.totalAvailableQuantity,
+      initialQuantity: availableQty,
     });
 
     // Check if Firestore batch write is available for atomic creation
     const db = (this.productRepo as any).db;
-    if (db && typeof db.batch === 'function' && input.totalAvailableQuantity > 0) {
+    if (db && typeof db.batch === 'function' && availableQty > 0) {
       const batch = db.batch();
       const productRef = this.productRepo.collection.doc();
       const lotRef = this.lotRepo.collection.doc();
@@ -102,8 +109,8 @@ export class ProductService {
         lotNumber: `LOT-INIT-${productId.slice(-6).toUpperCase()}`,
         harvestDate: input.harvestDate,
         expiryDate,
-        totalQuantity: input.totalAvailableQuantity,
-        availableQuantity: input.totalAvailableQuantity,
+        totalQuantity: availableQty,
+        availableQuantity: availableQty,
         reservedQuantity: 0,
         unit: input.unit,
         qualityGrade: input.qualityGrade,
@@ -119,15 +126,15 @@ export class ProductService {
         updatedAt: now,
       };
 
-      const invStatus = calculateInventoryStatus(input.totalAvailableQuantity, 0, expiryDate);
+      const invStatus = calculateInventoryStatus(availableQty, 0, expiryDate);
       const inventoryRecord: ServerInventoryLot = {
         id: invId,
         productLotId: lotId,
         productId,
         ownerId: user.uid,
-        quantity: input.totalAvailableQuantity,
+        quantity: availableQty,
         reservedQuantity: 0,
-        availableQuantity: input.totalAvailableQuantity,
+        availableQuantity: availableQty,
         unit: input.unit,
         warehouseLocation: `${input.location.district} Aggregation Center`,
         storageCondition: input.storageType,
@@ -157,7 +164,7 @@ export class ProductService {
         productId,
         lotId,
         invId,
-        quantity: input.totalAvailableQuantity,
+        quantity: availableQty,
       });
 
       return createdProduct;

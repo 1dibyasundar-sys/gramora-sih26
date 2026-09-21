@@ -17,6 +17,54 @@ import {
   ReleaseStockSchema,
   calculateInventoryStatus,
 } from '../domain/inventory';
+import { ProductService } from '../services/product.service';
+import { ProductRepository } from '../repositories/product.repository';
+import { ProductLotRepository } from '../repositories/product-lot.repository';
+import { InventoryRepository } from '../repositories/inventory.repository';
+import { ServerProduct } from '../domain/product';
+
+class MockProductRepoForDomain extends ProductRepository {
+  public store = new Map<string, ServerProduct>();
+  public get db() {
+    return null as any;
+  }
+  constructor() {
+    super();
+  }
+  async create(data: any): Promise<ServerProduct> {
+    const item = { ...data, id: `prod-${Date.now()}` };
+    this.store.set(item.id, item);
+    return item;
+  }
+  async findById(id: string): Promise<ServerProduct | null> {
+    return this.store.get(id) || null;
+  }
+}
+class MockLotRepoForDomain extends ProductLotRepository {
+  public store = new Map<string, any>();
+  constructor() {
+    super();
+  }
+  async create(data: any): Promise<any> {
+    const item = { ...data, id: `lot-${Date.now()}` };
+    this.store.set(item.id, item);
+    return item;
+  }
+  async findActiveLots(productId: string): Promise<any[]> {
+    return [];
+  }
+}
+class MockInventoryRepoForDomain extends InventoryRepository {
+  public store = new Map<string, any>();
+  constructor() {
+    super();
+  }
+  async create(data: any): Promise<any> {
+    const item = { ...data, id: `inv-${Date.now()}` };
+    this.store.set(item.id, item);
+    return item;
+  }
+}
 
 async function runProductDomainTests() {
   console.log('====================================================');
@@ -231,6 +279,67 @@ async function runProductDomainTests() {
       });
     });
     console.log('✔ Passed: Stock adjustment schema validated.\n');
+    passed++;
+  }
+
+  // --------------------------------------------------------------------------
+  // TEST 8: ProductService.createProduct correctly maps totalAvailableQuantity and initialQuantity
+  // --------------------------------------------------------------------------
+  {
+    console.log('TEST 8: ProductService.createProduct correctly maps totalAvailableQuantity and initialQuantity');
+    const pRepo = new MockProductRepoForDomain();
+    const lRepo = new MockLotRepoForDomain();
+    const iRepo = new MockInventoryRepoForDomain();
+    const service = new ProductService(pRepo, lRepo, iRepo);
+
+    const farmerUser = {
+      uid: 'farmer-test-01',
+      email: 'farmer@test.com',
+      role: 'farmer' as const,
+      name: 'Ramesh Farmer',
+      verified: true,
+      profileExists: true,
+      status: 'active' as const,
+      claims: {},
+    };
+
+    // Scenario A: totalAvailableQuantity: 1000
+    const prodA = await service.createProduct(farmerUser, {
+      title: 'Nagpur Organic Oranges',
+      category: 'fruits',
+      variety: 'Mandarin',
+      pricePerUnit: 60,
+      unit: 'kg',
+      minOrderQuantity: 50,
+      totalAvailableQuantity: 1000,
+      location: { district: 'Nagpur', state: 'Maharashtra' },
+      harvestDate: '2026-03-15',
+      shelfLifeDays: 20,
+      qualityGrade: 'Grade A',
+      storageType: 'Cold Storage',
+      description: 'Fresh Nagpur oranges',
+    } as any);
+    assert.equal(prodA.totalAvailableQuantity, 1000, 'totalAvailableQuantity must be 1000');
+
+    // Scenario B: initialQuantity: 2500 (seed demo script format)
+    const prodB = await service.createProduct(farmerUser, {
+      title: 'Standard Organic Vine Tomatoes',
+      category: 'vegetables',
+      variety: 'Organic',
+      pricePerUnit: 32,
+      unit: 'kg',
+      minOrderQuantity: 50,
+      initialQuantity: 2500,
+      location: { district: 'Pune', state: 'Maharashtra' },
+      harvestDate: '2026-03-15',
+      shelfLifeDays: 10,
+      qualityGrade: 'Grade B',
+      storageType: 'Cold Storage',
+      description: 'Standard vine tomatoes',
+    } as any);
+    assert.equal(prodB.totalAvailableQuantity, 2500, 'initialQuantity must map to totalAvailableQuantity 2500');
+
+    console.log('✔ Passed: Both totalAvailableQuantity and initialQuantity map correctly.\n');
     passed++;
   }
 

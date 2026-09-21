@@ -19,8 +19,9 @@ export function normalizeRole(role: string): CanonicalRole {
 }
 
 export interface FarmerProfile {
-  kisanId: string;
+  kisanId?: string;
   landHoldingAcres?: number;
+  landArea?: number;
   primaryCrops?: string[];
 }
 

@@ -1,11 +1,13 @@
 'use client';
 
 import React from 'react';
-import { Menu, Search, UserCircle, ExternalLink } from 'lucide-react';
+import { Menu, ExternalLink } from 'lucide-react';
 import { RoleSwitcherBadge } from './role-switcher-badge';
 import { NotificationsPopover } from './notifications-popover';
+import { LanguageSelector } from './language-selector';
 import { Avatar } from '@/components/ui/avatar';
 import { useAuth } from '@/hooks/useAuth';
+import { useTranslation } from '@/i18n';
 import Link from 'next/link';
 
 export interface TopbarProps {
@@ -14,7 +16,8 @@ export interface TopbarProps {
 }
 
 export function Topbar({ onOpenMobileMenu, title }: TopbarProps) {
-  const { user, role } = useAuth();
+  const { user } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <header className="sticky top-0 z-30 h-16 sm:h-20 w-full glass-header border-b border-surface-border px-4 sm:px-6 flex items-center justify-between gap-4">
@@ -36,19 +39,22 @@ export function Topbar({ onOpenMobileMenu, title }: TopbarProps) {
         )}
       </div>
 
-      {/* Right side: Demo Role Switcher, Notifications, Profile */}
+      {/* Right side: Demo Role Switcher, Language Selector, Notifications, Profile */}
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Role Switcher Bar */}
         <div className="hidden xl:block">
           <RoleSwitcherBadge />
         </div>
 
+        {/* Language Selector */}
+        <LanguageSelector />
+
         {/* Live Marketplace link */}
         <Link
           href="/marketplace"
           className="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-elevated/70 hover:bg-surface-elevated border border-surface-border text-caption font-semibold text-foreground/80 hover:text-foreground transition-colors"
         >
-          <span>Marketplace</span>
+          <span>{t('navigation.marketplace')}</span>
           <ExternalLink className="w-3 h-3 text-foreground/40" />
         </Link>
 

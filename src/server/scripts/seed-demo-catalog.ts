@@ -213,6 +213,7 @@ async function seedDemoCatalog() {
         pricePerUnit: crop.pricePerUnit,
         unit: crop.unit as any,
         minOrderQuantity: crop.minOrderQuantity,
+        totalAvailableQuantity: 1000,
         initialQuantity: 1000,
         location: { district: 'Pune', state: 'Maharashtra' },
         harvestDate: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0], // 2 days ago
@@ -234,7 +235,8 @@ async function seedDemoCatalog() {
         ...premiumReq,
         title: `Standard ${crop.title}`,
         pricePerUnit: Math.floor(crop.pricePerUnit * 0.8), // 20% cheaper
-        initialQuantity: 2500, // More volume available
+        totalAvailableQuantity: 2500, // More volume available
+        initialQuantity: 2500,
         qualityGrade: 'Grade B',
         description: crop.description + ' Standard grade, great value for processing and bulk retail.',
         tags: [...crop.tags, 'Standard'],

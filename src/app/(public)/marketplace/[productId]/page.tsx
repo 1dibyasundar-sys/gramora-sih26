@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PublicHeader } from '@/components/layout/public-header';
@@ -18,6 +18,14 @@ import { Alert } from '@/components/feedback/alert';
 import { useAuth } from '@/hooks/useAuth';
 import { orderService } from '@/services';
 import { formatCurrency, formatWeight } from '@/lib/utils';
+import { useTranslation } from '@/i18n';
+import {
+  getQuantityStep,
+  getProductOrderability,
+  incrementQuantity,
+  decrementQuantity,
+  clampQuantity,
+} from '@/lib/quantity';
 import {
   MapPin,
   ShieldCheck,
@@ -33,6 +41,7 @@ import {
   ShoppingBag,
   Sparkles,
   Lock,
+  AlertCircle,
 } from 'lucide-react';
 
 export default function ProductDetailPage() {
@@ -42,9 +51,10 @@ export default function ProductDetailPage() {
   const { product, loading, error } = useProduct(productId);
   const { success, error: toastError } = useToast();
   const { user, role } = useAuth();
+  const { t } = useTranslation();
   const isAuthenticated = !!user;
 
-  const [quantity, setQuantity] = useState<number>(50);
+  const [quantity, setQuantity] = useState<number>(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState(false);
   const [ordering, setOrdering] = useState(false);
@@ -58,6 +68,25 @@ export default function ProductDetailPage() {
     state: '',
     postalCode: '',
   });
+
+  // Quantity, Step & Orderability Synchronization
+  const availableStock = product?.totalAvailableQuantity ?? 0;
+  const minOrderQty = product?.minOrderQuantity ?? 1;
+  const orderability = getProductOrderability(availableStock, minOrderQty);
+  const isOrderable = orderability.orderable;
+  const isOutOfStock = !isOrderable && orderability.reason === 'OUT_OF_STOCK';
+  const isInsufficientStock = !isOrderable && orderability.reason === 'INSUFFICIENT_STOCK';
+  const step = product ? getQuantityStep(product.unit, minOrderQty) : 1;
+
+  useEffect(() => {
+    if (product) {
+      if (isOrderable) {
+        setQuantity(minOrderQty);
+      } else {
+        setQuantity(0);
+      }
+    }
+  }, [product, isOrderable, minOrderQty]);
 
   if (loading) {
     return (
@@ -109,17 +138,50 @@ export default function ProductDetailPage() {
     );
   }
 
-  // Cost calculations
-  const effectiveQty = Math.max(quantity, product.minOrderQuantity);
+  // Cost calculations strictly tied to valid quantity
+  const effectiveQty = isOrderable ? clampQuantity(quantity, minOrderQty, availableStock) : 0;
   const produceCost = effectiveQty * product.pricePerUnit;
   const traditionalMandiCost = effectiveQty * (product.marketMandiPrice || product.pricePerUnit * 1.3);
-  const totalSavings = traditionalMandiCost - produceCost;
-  const estimatedLogistics = Math.round(effectiveQty * 2.2);
-  const platformEscrowFee = Math.round(produceCost * 0.025);
+  const totalSavings = isOrderable && traditionalMandiCost > produceCost ? traditionalMandiCost - produceCost : 0;
+  const estimatedLogistics = effectiveQty > 0 ? Math.round(effectiveQty * 2.2) : 0;
+  const platformEscrowFee = effectiveQty > 0 ? Math.round(produceCost * 0.025) : 0;
   const totalOrderEstimate = produceCost + estimatedLogistics + platformEscrowFee;
+
+  const handleIncrease = () => {
+    if (!isOrderable) return;
+    setQuantity((q) => incrementQuantity(q, step, availableStock, minOrderQty));
+  };
+
+  const handleDecrease = () => {
+    if (!isOrderable) return;
+    setQuantity((q) => decrementQuantity(q, step, minOrderQty));
+  };
+
+  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!isOrderable) return;
+    const raw = e.target.value;
+    if (raw === '') {
+      setQuantity(0);
+      return;
+    }
+    const val = parseInt(raw, 10);
+    if (!isNaN(val)) {
+      setQuantity(val);
+    }
+  };
+
+  const handleQuantityBlur = () => {
+    if (!isOrderable) return;
+    setQuantity((q) => clampQuantity(q, minOrderQty, availableStock));
+  };
 
   // Real Checkout Handler
   const handleCheckout = async () => {
+    if (ordering) return;
+    if (!isOrderable || effectiveQty <= 0) {
+      toastError('This crop lot is currently unavailable for consignment orders.');
+      return;
+    }
     if (!isAuthenticated || !user) {
       router.push(`/login?redirect=/marketplace/${productId}`);
       return;
@@ -171,7 +233,7 @@ export default function ProductDetailPage() {
           {/* Breadcrumb Navigation */}
           <Breadcrumb
             items={[
-              { label: 'Marketplace', href: '/marketplace' },
+              { label: t('navigation.marketplace'), href: '/marketplace' },
               { label: product.category.toUpperCase(), href: `/marketplace?category=${product.category}` },
               { label: product.title },
             ]}
@@ -193,7 +255,7 @@ export default function ProductDetailPage() {
                   </Badge>
                   {product.organicCertified && (
                     <Badge variant="success" size="md">
-                      100% Certified Organic
+                      {t('marketplace.organicCertified')}
                     </Badge>
                   )}
                 </div>
@@ -218,25 +280,25 @@ export default function ProductDetailPage() {
 
               {/* Technical Specifications Grid */}
               <div className="rounded-2xl p-6 glass-panel border border-surface-border space-y-4">
-                <h3 className="text-body font-bold text-foreground">Agronomic & Storage Specifications</h3>
+                <h3 className="text-body font-bold text-foreground">{t('productDetail.lotDetails')}</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div className="p-3.5 rounded-xl bg-surface-elevated/70 border border-surface-border space-y-1">
                     <span className="text-caption text-foreground/50 flex items-center gap-1">
-                      <Calendar className="w-3.5 h-3.5 text-primary-400" /> Harvested
+                      <Calendar className="w-3.5 h-3.5 text-primary-400" /> {t('marketplace.harvestDate')}
                     </span>
                     <span className="text-body-sm font-bold text-foreground block">{product.harvestDate}</span>
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-surface-elevated/70 border border-surface-border space-y-1">
                     <span className="text-caption text-foreground/50 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-accent-400" /> Shelf Life
+                      <Clock className="w-3.5 h-3.5 text-accent-400" /> {t('marketplace.shelfLife')}
                     </span>
-                    <span className="text-body-sm font-bold text-foreground block">{product.shelfLifeDays} Days</span>
+                    <span className="text-body-sm font-bold text-foreground block">{product.shelfLifeDays} {t('marketplace.days')}</span>
                   </div>
 
                   <div className="p-3.5 rounded-xl bg-surface-elevated/70 border border-surface-border space-y-1">
                     <span className="text-caption text-foreground/50 flex items-center gap-1">
-                      <Droplets className="w-3.5 h-3.5 text-cyan-400" /> Moisture
+                      <Droplets className="w-3.5 h-3.5 text-cyan-400" /> {t('productDetail.moistureContent')}
                     </span>
                     <span className="text-body-sm font-bold text-foreground block">
                       {product.moistureContentPercent ? `${product.moistureContentPercent}%` : 'Standard'}
@@ -245,7 +307,7 @@ export default function ProductDetailPage() {
 
                   <div className="p-3.5 rounded-xl bg-surface-elevated/70 border border-surface-border space-y-1">
                     <span className="text-caption text-foreground/50 flex items-center gap-1">
-                      <Warehouse className="w-3.5 h-3.5 text-emerald-400" /> Storage
+                      <Warehouse className="w-3.5 h-3.5 text-emerald-400" /> {t('marketplace.storageType')}
                     </span>
                     <span className="text-body-sm font-bold text-foreground block truncate">
                       {product.storageType}
@@ -293,7 +355,9 @@ export default function ProductDetailPage() {
                 <div>
                   <div className="flex items-center justify-between text-caption text-foreground/50 mb-1">
                     <span>Variety: {product.variety}</span>
-                    <span className="font-mono text-emerald-400">Available: {formatWeight(product.totalAvailableQuantity)}</span>
+                    <span className={`font-mono font-medium ${product.totalAvailableQuantity > 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                      {t('marketplace.availableStock')}: {formatWeight(product.totalAvailableQuantity)}
+                    </span>
                   </div>
                   <h1 className="text-h3 font-extrabold text-foreground">{product.title}</h1>
                 </div>
@@ -307,63 +371,109 @@ export default function ProductDetailPage() {
                     size="lg"
                   />
                   <div className="mt-2 pt-2 border-t border-surface-border text-caption text-foreground/60 flex items-center justify-between">
-                    <span>Minimum Order Quantity (MOQ):</span>
+                    <span>{t('productDetail.minOrderRequirement')}</span>
                     <strong className="text-foreground">{product.minOrderQuantity} {product.unit}</strong>
                   </div>
                 </div>
 
                 {/* Interactive Quantity Selector */}
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <div className="flex items-center justify-between text-label text-foreground/80 font-bold uppercase text-xs">
-                    <span>Select Order Quantity ({product.unit}):</span>
-                    <span className="text-caption text-foreground/50">Min: {product.minOrderQuantity} {product.unit}</span>
+                    <span>{t('productDetail.selectQuantity')} ({product.unit}):</span>
+                    <span className="text-caption text-foreground/50">
+                      {t('productDetail.minimumOrder')}: {product.minOrderQuantity} {product.unit}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-3">
+
+                  {/* Out of Stock Warning */}
+                  {isOutOfStock && (
+                    <div className="p-3 rounded-xl bg-red-950/40 border border-red-500/40 text-red-300 text-caption font-medium flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                      <span>{t('productDetail.currentlyUnavailable')} ({t('productDetail.outOfStock')})</span>
+                    </div>
+                  )}
+
+                  {/* Insufficient Stock for MOQ Warning */}
+                  {isInsufficientStock && (
+                    <div className="p-3 rounded-xl bg-amber-950/40 border border-amber-500/40 text-amber-300 text-caption font-medium flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+                      <span>
+                        {t('productDetail.onlyStockAvailable')
+                          .replace('{available}', String(product.totalAvailableQuantity))
+                          .replace('{unit}', product.unit)
+                          .replace('{moq}', String(product.minOrderQuantity))}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 sm:gap-3">
                     <button
-                      onClick={() => setQuantity((q) => Math.max(product.minOrderQuantity, q - (product.unit === 'kg' ? 50 : 5)))}
-                      className="w-10 h-10 rounded-xl bg-surface-elevated border border-surface-border font-bold text-h4 flex items-center justify-center hover:bg-surface-secondary active:scale-95"
+                      type="button"
+                      aria-label={t('productDetail.decreaseQuantity')}
+                      disabled={!isOrderable || quantity <= product.minOrderQuantity}
+                      onClick={handleDecrease}
+                      className="w-12 h-12 rounded-xl bg-surface-elevated border border-surface-border font-bold text-h4 flex items-center justify-center transition-all hover:bg-surface-secondary active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-surface-elevated disabled:active:scale-100 focus-visible:ring-2 focus-visible:ring-primary-500 outline-none select-none shrink-0"
                     >
-                      -
+                      −
                     </button>
-                    <input
-                      type="number"
-                      value={quantity}
-                      min={product.minOrderQuantity}
-                      max={product.totalAvailableQuantity}
-                      onChange={(e) => setQuantity(Number(e.target.value))}
-                      className="flex-1 text-center font-mono font-bold text-h4 py-2 bg-surface-primary border border-surface-border rounded-xl text-foreground focus:border-primary-500 outline-none"
-                    />
+                    <div className="relative flex-1 min-w-0">
+                      <input
+                        type="number"
+                        value={isOrderable ? quantity : 0}
+                        min={product.minOrderQuantity}
+                        max={product.totalAvailableQuantity}
+                        step={step}
+                        disabled={!isOrderable}
+                        aria-label={`${t('productDetail.selectQuantity')} in ${product.unit}`}
+                        onChange={handleQuantityChange}
+                        onBlur={handleQuantityBlur}
+                        className="w-full text-center font-mono font-bold text-h4 py-2.5 px-3 bg-surface-primary border border-surface-border rounded-xl text-foreground focus:border-primary-500 focus-visible:ring-2 focus-visible:ring-primary-500/50 outline-none disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-caption font-semibold text-foreground/50 pointer-events-none hidden sm:inline">
+                        {product.unit}
+                      </span>
+                    </div>
                     <button
-                      onClick={() => setQuantity((q) => Math.min(product.totalAvailableQuantity, q + (product.unit === 'kg' ? 50 : 5)))}
-                      className="w-10 h-10 rounded-xl bg-surface-elevated border border-surface-border font-bold text-h4 flex items-center justify-center hover:bg-surface-secondary active:scale-95"
+                      type="button"
+                      aria-label={t('productDetail.increaseQuantity')}
+                      disabled={!isOrderable || quantity >= product.totalAvailableQuantity}
+                      onClick={handleIncrease}
+                      className="w-12 h-12 rounded-xl bg-surface-elevated border border-surface-border font-bold text-h4 flex items-center justify-center transition-all hover:bg-surface-secondary active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-surface-elevated disabled:active:scale-100 focus-visible:ring-2 focus-visible:ring-primary-500 outline-none select-none shrink-0"
                     >
                       +
                     </button>
                   </div>
+
+                  {isOrderable && (
+                    <div className="flex justify-between text-caption text-foreground/50 px-1">
+                      <span>Step: {step} {product.unit}</span>
+                      <span>{quantity >= product.totalAvailableQuantity ? t('productDetail.maximumAvailable') : `Max: ${formatWeight(product.totalAvailableQuantity)}`}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Value Breakdown Matrix (Transparent Direct Trade) */}
                 <div className="p-4 rounded-xl bg-surface-primary/90 border border-surface-border space-y-2.5 text-body-sm">
                   <div className="flex items-center justify-between text-foreground/80">
-                    <span>Produce Cost ({effectiveQty} {product.unit}):</span>
+                    <span>{t('productDetail.directFarmerEarning')} ({effectiveQty} {product.unit}):</span>
                     <span className="font-mono font-semibold text-foreground">{formatCurrency(produceCost)}</span>
                   </div>
                   <div className="flex items-center justify-between text-foreground/60">
-                    <span>Est. Cold-Chain Freight:</span>
+                    <span>{t('productDetail.logisticsCost')}:</span>
                     <span className="font-mono">{formatCurrency(estimatedLogistics)}</span>
                   </div>
                   <div className="flex items-center justify-between text-foreground/60">
-                    <span>Digital Quality & Escrow (2.5%):</span>
+                    <span>{t('productDetail.platformFee')}:</span>
                     <span className="font-mono">{formatCurrency(platformEscrowFee)}</span>
                   </div>
                   <div className="pt-2 border-t border-surface-border flex items-center justify-between text-body font-bold text-foreground">
-                    <span>Estimated Total:</span>
+                    <span>{t('productDetail.totalPrice')}:</span>
                     <span className="font-mono text-primary-400">{formatCurrency(totalOrderEstimate)}</span>
                   </div>
 
                   {totalSavings > 0 && (
                     <div className="mt-2 p-2.5 rounded-lg bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 text-caption font-bold flex items-center justify-between">
-                      <span>Mandi Intermediary Markup Saved:</span>
+                      <span>{t('marketplace.consumerSavings')}:</span>
                       <span className="font-mono text-emerald-400">+{formatCurrency(totalSavings)}</span>
                     </div>
                   )}
@@ -375,21 +485,32 @@ export default function ProductDetailPage() {
                     variant="primary"
                     size="lg"
                     className="w-full shadow-glow"
-                    onClick={() => setCheckoutModalOpen(true)}
+                    disabled={!isOrderable || ordering}
+                    loading={ordering}
+                    onClick={() => {
+                      if (!isOrderable) return;
+                      setCheckoutModalOpen(true);
+                    }}
                     rightIcon={<ArrowRight className="w-4 h-4" />}
                   >
-                    Proceed with Escrow Lock
+                    {!isOrderable
+                      ? isOutOfStock
+                        ? t('productDetail.outOfStock')
+                        : t('productDetail.insufficientStock')
+                      : t('productDetail.orderConsignment')}
                   </Button>
                   <Button
                     variant="glass"
                     size="md"
                     className="w-full"
+                    disabled={!isOrderable || ordering}
                     onClick={() => {
+                      if (!isOrderable) return;
                       success(`Added ${effectiveQty} ${product.unit} to procurement cart`);
                     }}
                     leftIcon={<ShoppingBag className="w-4 h-4" />}
                   >
-                    Add to Sourcing Cart
+                    {t('productDetail.addToSourcingCart')}
                   </Button>
                 </div>
               </GlassCard>
@@ -460,6 +581,7 @@ export default function ProductDetailPage() {
                 <Button
                   variant="primary"
                   size="md"
+                  disabled={!isOrderable || ordering}
                   loading={ordering}
                   onClick={handleCheckout}
                   rightIcon={<ArrowRight className="w-4 h-4" />}

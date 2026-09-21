@@ -1,8 +1,13 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
-import { Sprout, ShieldCheck, Heart } from 'lucide-react';
+import { Sprout, ShieldCheck } from 'lucide-react';
+import { useTranslation } from '@/i18n';
 
 export function PublicFooter() {
+  const { t } = useTranslation();
+
   return (
     <footer className="w-full border-t border-surface-border bg-surface-primary/95 text-foreground/70 text-body-sm pt-14 pb-10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -18,44 +23,43 @@ export function PublicFooter() {
               </span>
             </Link>
             <p className="text-body-sm text-foreground/60 leading-relaxed max-w-sm">
-              Empowering Indian agricultural producers and FPOs with direct marketplace access,
-              cold-chain logistics, and AI-assisted demand intelligence.
+              {t('footer.aboutText')}
             </p>
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-elevated border border-surface-border text-caption text-foreground/60">
               <ShieldCheck className="w-4 h-4 text-primary-400 shrink-0" />
-              <span>Smart India Hackathon 2026 • Problem ID 26033</span>
+              <span>{t('footer.sihBadge')}</span>
             </div>
           </div>
 
           {/* Column 1: Marketplace */}
           <div className="space-y-3">
             <h4 className="text-label text-foreground font-bold uppercase tracking-wider text-xs">
-              Marketplace
+              {t('footer.marketplaceCol')}
             </h4>
             <ul className="space-y-2 text-caption sm:text-body-sm">
               <li>
                 <Link href="/marketplace?category=vegetables" className="hover:text-primary-400 transition-colors">
-                  Fresh Vegetables
+                  {t('marketplace.vegetables')}
                 </Link>
               </li>
               <li>
                 <Link href="/marketplace?category=fruits" className="hover:text-primary-400 transition-colors">
-                  Seasonal Fruits
+                  {t('marketplace.fruits')}
                 </Link>
               </li>
               <li>
                 <Link href="/marketplace?category=grains" className="hover:text-primary-400 transition-colors">
-                  Grains & Cereals
+                  {t('marketplace.grains')}
                 </Link>
               </li>
               <li>
                 <Link href="/marketplace?category=spices" className="hover:text-primary-400 transition-colors">
-                  Single-Origin Spices
+                  {t('marketplace.spices')}
                 </Link>
               </li>
               <li>
                 <Link href="/marketplace?organicOnly=true" className="hover:text-primary-400 transition-colors">
-                  Jaivik Certified Organic
+                  {t('marketplace.organic')}
                 </Link>
               </li>
             </ul>
@@ -64,27 +68,27 @@ export function PublicFooter() {
           {/* Column 2: Platform Roles */}
           <div className="space-y-3">
             <h4 className="text-label text-foreground font-bold uppercase tracking-wider text-xs">
-              Solutions
+              {t('footer.producersCol')}
             </h4>
             <ul className="space-y-2 text-caption sm:text-body-sm">
               <li>
                 <Link href="/how-it-works#farmers" className="hover:text-primary-400 transition-colors">
-                  For Smallholder Farmers
+                  {t('auth.farmer')}
                 </Link>
               </li>
               <li>
                 <Link href="/how-it-works#fpos" className="hover:text-primary-400 transition-colors">
-                  For FPO Collectives
+                  {t('auth.fpo')}
                 </Link>
               </li>
               <li>
                 <Link href="/how-it-works#buyers" className="hover:text-primary-400 transition-colors">
-                  For Bulk Buyers & Horeca
+                  {t('auth.buyer')}
                 </Link>
               </li>
               <li>
                 <Link href="/how-it-works#logistics" className="hover:text-primary-400 transition-colors">
-                  Cold-Chain Logistics
+                  {t('footer.logisticsCol')}
                 </Link>
               </li>
             </ul>
@@ -93,22 +97,22 @@ export function PublicFooter() {
           {/* Column 3: Impact & Prototype */}
           <div className="space-y-3">
             <h4 className="text-label text-foreground font-bold uppercase tracking-wider text-xs">
-              Direct Impact
+              {t('navigation.directImpact')}
             </h4>
             <ul className="space-y-2 text-caption sm:text-body-sm">
               <li>
                 <Link href="/about" className="hover:text-primary-400 transition-colors">
-                  Eliminating Intermediaries
+                  {t('marketplace.directExchange')}
                 </Link>
               </li>
               <li>
                 <Link href="/about#transparency" className="hover:text-primary-400 transition-colors">
-                  Price Transparency Formula
+                  {t('productDetail.breakdownTitle')}
                 </Link>
               </li>
               <li>
                 <Link href="/dashboard" className="hover:text-primary-400 transition-colors">
-                  Interactive Demo Dashboards
+                  {t('navigation.dashboard')}
                 </Link>
               </li>
             </ul>
@@ -118,10 +122,10 @@ export function PublicFooter() {
         {/* Bottom Disclosures */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-caption text-foreground/40">
           <p>
-            © {new Date().getFullYear()} Gramora Platform. Built for Smart India Hackathon 2026.
+            © {new Date().getFullYear()} Gramora Platform. {t('footer.sihBadge')}
           </p>
           <p className="flex items-center gap-1.5">
-            <span>Engineering a prosperous Bharat for farmers</span>
+            <span>{t('footer.rightsReserved')}</span>
           </p>
         </div>
       </div>

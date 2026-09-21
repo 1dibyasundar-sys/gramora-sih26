@@ -29,12 +29,14 @@ import {
   Sprout,
   Store,
 } from 'lucide-react';
+import { useTranslation } from '@/i18n';
 
 function MarketplaceContent() {
   const searchParams = useSearchParams();
   const categoryParam = searchParams.get('category') as ProductCategory | null;
   const organicParam = searchParams.get('organicOnly') === 'true';
   const queryParam = searchParams.get('q') || '';
+  const { t } = useTranslation();
 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [mobileFilterOpen, setMobileFilterOpen] = useState(false);
@@ -84,14 +86,13 @@ function MarketplaceContent() {
             <div>
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary-500/15 border border-primary-500/30 text-caption font-semibold text-primary-300 mb-2">
                 <Store className="w-3.5 h-3.5" />
-                <span>Direct Agricultural Exchange</span>
+                <span>{t('marketplace.badge')}</span>
               </div>
               <h1 className="text-h2 sm:text-h1 font-extrabold text-foreground tracking-tight">
-                Farm Produce Marketplace
+                {t('marketplace.title')}
               </h1>
               <p className="text-body-sm text-foreground/60 max-w-xl mt-1">
-                Source directly from verified farmers and FPOs. Zero intermediary deductions, verified
-                quality grades, and transparent mandi price comparisons.
+                {t('marketplace.subtitle')}
               </p>
             </div>
 
@@ -122,12 +123,13 @@ function MarketplaceContent() {
                 </button>
               </div>
 
-              <div className="w-44">
+              <div className="w-48">
                 <Select
                   options={[
-                    { label: 'Highest Rated', value: 'rating' },
-                    { label: 'Price: Low to High', value: 'price_asc' },
-                    { label: 'Price: High to Low', value: 'price_desc' },
+                    { label: t('marketplace.sortRating'), value: 'rating' },
+                    { label: t('marketplace.sortPriceAsc'), value: 'price_asc' },
+                    { label: t('marketplace.sortPriceDesc'), value: 'price_desc' },
+                    { label: t('marketplace.sortNewest'), value: 'newest' },
                   ]}
                   value={filters.sortBy || 'rating'}
                   onChange={(e) => handleSortChange(e.target.value as 'price_asc' | 'price_desc' | 'rating' | 'newest')}
@@ -142,7 +144,7 @@ function MarketplaceContent() {
                   onClick={() => setMobileFilterOpen(true)}
                   leftIcon={<Filter className="w-4 h-4" />}
                 >
-                  Filters
+                  {t('common.filter')}
                 </Button>
               </div>
             </div>
@@ -153,7 +155,7 @@ function MarketplaceContent() {
             <SearchInput
               value={searchQuery}
               onChange={handleSearch}
-              placeholder="Search by crop, variety (Garwa, Alphonso), district, or farmer name..."
+              placeholder={t('marketplace.searchPlaceholder')}
             />
           </div>
 
@@ -172,7 +174,7 @@ function MarketplaceContent() {
             <Drawer
               isOpen={mobileFilterOpen}
               onClose={() => setMobileFilterOpen(false)}
-              title="Filter Harvest Listings"
+              title={`${t('common.filter')} ${t('navigation.marketplace')}`}
               position="right"
             >
               <FilterPanel
@@ -191,8 +193,8 @@ function MarketplaceContent() {
             {/* Products Grid / List */}
             <div className="lg:col-span-3 space-y-6">
               <div className="flex items-center justify-between text-caption text-foreground/50">
-                <span>Showing <strong className="text-foreground">{products.length}</strong> verified crops</span>
-                <span>Active Mandi Price Comparisons Enabled</span>
+                <span>{t('marketplace.showingCrops')}: <strong className="text-foreground">{products.length}</strong></span>
+                <span>{t('marketplace.activeMandiComparison')}</span>
               </div>
 
               {error ? (
@@ -201,7 +203,7 @@ function MarketplaceContent() {
                     {error}
                   </Alert>
                   <Button variant="secondary" size="sm" onClick={() => refetch()}>
-                    Retry Query
+                    {t('common.retry')}
                   </Button>
                 </div>
               ) : loading ? (
@@ -212,9 +214,9 @@ function MarketplaceContent() {
                 </div>
               ) : products.length === 0 ? (
                 <EmptyState
-                  title="No harvest lots match your criteria"
-                  description="Try adjusting your category filter, price threshold, or search keywords."
-                  actionLabel="Clear All Filters"
+                  title={t('marketplace.noProduceFound')}
+                  description={t('marketplace.noProduceDescription')}
+                  actionLabel={t('marketplace.retryQuery')}
                   onAction={resetFilters}
                 />
               ) : viewMode === 'grid' ? (
@@ -238,7 +240,7 @@ function MarketplaceContent() {
                           </Badge>
                           {prod.organicCertified && (
                             <Badge variant="success" size="sm">
-                              Organic
+                              {t('marketplace.organic')}
                             </Badge>
                           )}
                         </div>
@@ -275,7 +277,7 @@ function MarketplaceContent() {
                           />
                           <Link href={`/marketplace/${prod.id}`}>
                             <Button variant="secondary" size="xs">
-                              Inspect
+                              {t('marketplace.viewProduce')}
                             </Button>
                           </Link>
                         </div>
@@ -308,7 +310,7 @@ function MarketplaceContent() {
                           </Badge>
                           {prod.organicCertified && (
                             <Badge variant="success" size="sm">
-                              Organic
+                              {t('marketplace.organic')}
                             </Badge>
                           )}
                           <span className="text-caption text-foreground/50">
@@ -324,7 +326,7 @@ function MarketplaceContent() {
                           {prod.description}
                         </p>
                         <div className="text-caption text-foreground/50 font-medium">
-                          Seller: <strong className="text-foreground/80">{prod.sellerName}</strong> • MOQ: {prod.minOrderQuantity} {prod.unit}
+                          Seller: <strong className="text-foreground/80">{prod.sellerName}</strong> • {t('marketplace.minOrderQty')}: {prod.minOrderQuantity} {prod.unit}
                         </div>
                       </div>
 
@@ -337,7 +339,7 @@ function MarketplaceContent() {
                         />
                         <Link href={`/marketplace/${prod.id}`}>
                           <Button variant="primary" size="sm">
-                            Order Batch
+                            {t('marketplace.orderProduce')}
                           </Button>
                         </Link>
                       </div>

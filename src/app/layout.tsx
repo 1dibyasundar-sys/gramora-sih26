@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AuthProvider } from '@/hooks/useAuth';
 import { ToastProvider } from '@/components/feedback/toast';
+import { LanguageProvider } from '@/i18n';
 
 export const metadata: Metadata = {
   title: 'Gramora | Direct Agricultural Marketplace & Smart Logistics (SIH 2026)',
@@ -41,7 +42,9 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className="antialiased selection:bg-primary-500/30 selection:text-primary-200">
         <AuthProvider>
-          <ToastProvider>{children}</ToastProvider>
+          <LanguageProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </LanguageProvider>
         </AuthProvider>
       </body>
     </html>

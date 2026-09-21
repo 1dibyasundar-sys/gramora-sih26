@@ -4,17 +4,20 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Sprout, Menu, X, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Sprout, Menu, X, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from '@/i18n';
+import { LanguageSelector } from './language-selector';
 
 export function PublicHeader() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { t } = useTranslation();
 
   const navLinks = [
-    { label: 'Marketplace', href: '/marketplace' },
-    { label: 'How It Works', href: '/how-it-works' },
-    { label: 'Direct Impact', href: '/about' },
+    { label: t('navigation.marketplace'), href: '/marketplace' },
+    { label: t('navigation.howItWorks'), href: '/how-it-works' },
+    { label: t('navigation.directImpact'), href: '/about' },
   ];
 
   return (
@@ -56,11 +59,12 @@ export function PublicHeader() {
           })}
         </nav>
 
-        {/* Desktop Action CTAs */}
+        {/* Desktop Action CTAs & Language Selector */}
         <div className="hidden md:flex items-center gap-3">
+          <LanguageSelector />
           <Link href="/login">
             <Button variant="ghost" size="sm">
-              Sign In
+              {t('navigation.signIn')}
             </Button>
           </Link>
           <Link href="/register">
@@ -69,13 +73,14 @@ export function PublicHeader() {
               size="sm"
               rightIcon={<ArrowRight className="w-4 h-4" />}
             >
-              Join as Farmer / Buyer
+              {t('navigation.joinAsFarmerBuyer')}
             </Button>
           </Link>
         </div>
 
-        {/* Mobile Hamburger Toggle */}
+        {/* Mobile Actions: Language + Hamburger Toggle */}
         <div className="flex md:hidden items-center gap-2">
+          <LanguageSelector variant="compact" />
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -107,15 +112,21 @@ export function PublicHeader() {
               </Link>
             ))}
           </div>
+          <div className="pt-2 pb-1">
+            <div className="text-[12px] font-semibold text-foreground/50 uppercase tracking-wider mb-2 px-1">
+              {t('profile.languagePreferences')}
+            </div>
+            <LanguageSelector variant="full" />
+          </div>
           <div className="pt-3 border-t border-surface-border/60 flex flex-col gap-2.5">
             <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
               <Button variant="secondary" size="md" className="w-full">
-                Sign In
+                {t('navigation.signIn')}
               </Button>
             </Link>
             <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
               <Button variant="primary" size="md" className="w-full">
-                Get Started
+                {t('navigation.getStarted')}
               </Button>
             </Link>
           </div>
