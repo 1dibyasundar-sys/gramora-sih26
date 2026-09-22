@@ -11,7 +11,7 @@ export const runtime = 'nodejs';
 /**
  * POST /api/v1/payments/create-order
  * Initiates an authoritative external Razorpay order for an existing Gramora consignment.
- * Strict RBAC: only 'buyer', 'consumer', or 'admin' can initiate payment for orders they own.
+ * Strict RBAC: only the purchasing 'buyer' or 'consumer' who placed the order can initiate payment.
  */
 export async function POST(req: NextRequest) {
   const ctx = getRequestContext(req);

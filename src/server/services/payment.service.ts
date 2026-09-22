@@ -24,9 +24,10 @@ import {
 } from '../domain/payment';
 import { ServerOrder } from '../domain/order';
 import { AuthenticatedUser } from '../auth/verify-token';
-import { requireOwnershipOrAdmin, requireRole } from '../auth/rbac';
+import { requireExactRole, requireOwnershipOrAdmin, requireRole } from '../auth/rbac';
 import {
   AppError,
+  AuthorizationError,
   BadRequestError,
   ConflictError,
   NotFoundError,
@@ -82,7 +83,10 @@ export class PaymentService {
     user: AuthenticatedUser,
     requestId: string = crypto.randomUUID()
   ): Promise<SafePaymentConfig> {
-    requireRole(user, 'buyer', 'consumer', 'admin');
+    // Strict Payer Authorization: Only the purchasing party ('buyer' or 'consumer' who placed this order)
+    // can initiate customer escrow funding. Producers (farmers/FPOs), logistics, unrelated buyers, and administrators
+    // are strictly prohibited from funding or acting as the payer.
+    requireExactRole(user, 'buyer', 'consumer', 'bulk_buyer');
 
     // 1. Fetch trusted order record
     const order = await this.orderRepo.findById(orderId);
@@ -90,8 +94,12 @@ export class PaymentService {
       throw new NotFoundError('Order', orderId);
     }
 
-    // 2. Ownership & role verification
-    requireOwnershipOrAdmin(user, order.buyerId, 'order');
+    // 2. Strict purchaser ownership verification (zero admin or third-party bypass)
+    if (user.uid !== order.buyerId) {
+      throw new AuthorizationError(
+        'Payment initiation rejected. Only the purchasing buyer who placed this consignment can fund escrow.'
+      );
+    }
 
     // 3. State verification: order must be in 'payment_pending'
     if (order.status !== 'payment_pending') {
@@ -224,13 +232,19 @@ export class PaymentService {
     user: AuthenticatedUser,
     requestId: string = crypto.randomUUID()
   ): Promise<{ orderId: string; status: string; paymentStatus: string; alreadyProcessed: boolean }> {
-    requireRole(user, 'buyer', 'consumer', 'admin');
+    // Strict Payer Authorization: Only the purchasing party can verify client-side payment
+    requireExactRole(user, 'buyer', 'consumer', 'bulk_buyer');
 
     const order = await this.orderRepo.findById(input.orderId);
     if (!order) {
       throw new NotFoundError('Order', input.orderId);
     }
-    requireOwnershipOrAdmin(user, order.buyerId, 'order');
+
+    if (user.uid !== order.buyerId) {
+      throw new AuthorizationError(
+        'Payment verification rejected. Only the purchasing buyer who placed this consignment can verify payment.'
+      );
+    }
 
     // If order is already funded, return idempotent success
     if (order.status === 'escrow_funded') {

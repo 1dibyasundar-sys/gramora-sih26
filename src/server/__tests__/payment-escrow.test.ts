@@ -43,6 +43,7 @@ import {
 } from '../lib/errors';
 import { Transaction } from 'firebase-admin/firestore';
 import { COLLECTIONS } from '../repositories/collections';
+import { getOrderPaymentRoleView } from '../../lib/order-helpers';
 
 class MockPaymentStore {
   public orders = new Map<string, ServerOrder>();
@@ -313,6 +314,39 @@ async function runPaymentEscrowTests() {
     email: 'ramesh@gramora.farm',
     role: 'farmer',
     name: 'Ramesh Farmer',
+    verified: true,
+    profileExists: true,
+    status: 'active',
+    claims: {},
+  };
+
+  const fpoUser: AuthenticatedUser = {
+    uid: 'fpo-sahyadri-303',
+    email: 'fpo@demo.gramora.farm',
+    role: 'fpo',
+    name: 'Sahyadri Farmers Collective',
+    verified: true,
+    profileExists: true,
+    status: 'active',
+    claims: {},
+  };
+
+  const logisticsUser: AuthenticatedUser = {
+    uid: 'logistics-kisan-404',
+    email: 'logistics@demo.gramora.farm',
+    role: 'logistics',
+    name: 'KisanCold Agri-Logistics',
+    verified: true,
+    profileExists: true,
+    status: 'active',
+    claims: {},
+  };
+
+  const adminUser: AuthenticatedUser = {
+    uid: 'admin-director-505',
+    email: 'admin@demo.gramora.farm',
+    role: 'admin',
+    name: 'Mission Director Admin',
     verified: true,
     profileExists: true,
     status: 'active',
@@ -984,6 +1018,212 @@ async function runPaymentEscrowTests() {
     }
   }
   console.log('✔ Passed: Secrets strictly protected from error messages, logs, and audit logs.');
+  passed++;
+
+  // ====================================================
+  // 21. Role-aware UI payment view resolution (Phase 2 & Phase 4)
+  // ====================================================
+  console.log('TEST 21: Role-aware UI payment view resolution');
+  {
+    setupStandardOrder();
+
+    // A. Buyer who owns order
+    const buyerView = getOrderPaymentRoleView({
+      user: { id: buyerUser.uid, role: buyerUser.role },
+      order: { buyerId: baseOrder.buyerId, sellerId: farmerUser.uid, status: 'payment_pending' },
+    });
+    assert.equal(buyerView.canPay, true);
+    assert.equal(buyerView.viewType, 'buyer_pay');
+    assert.equal(buyerView.title, 'Escrow Security Funding Required');
+
+    // B. Farmer producer who supplied order
+    const farmerView = getOrderPaymentRoleView({
+      user: { id: farmerUser.uid, role: farmerUser.role },
+      order: { buyerId: baseOrder.buyerId, sellerId: farmerUser.uid, status: 'payment_pending' },
+    });
+    assert.equal(farmerView.canPay, false);
+    assert.equal(farmerView.viewType, 'farmer_awaiting');
+    assert.equal(farmerView.title, 'Awaiting Buyer Payment');
+    assert.ok(farmerView.description.includes('Your produce is reserved for this consignment'));
+
+    // C. FPO producer
+    const fpoView = getOrderPaymentRoleView({
+      user: { id: fpoUser.uid, role: fpoUser.role },
+      order: { buyerId: baseOrder.buyerId, sellerId: farmerUser.uid, status: 'payment_pending' },
+    });
+    assert.equal(fpoView.canPay, false);
+    assert.equal(fpoView.viewType, 'farmer_awaiting');
+    assert.equal(fpoView.title, 'Awaiting Buyer Payment');
+
+    // D. Logistics partner
+    const logisticsView = getOrderPaymentRoleView({
+      user: { id: logisticsUser.uid, role: logisticsUser.role },
+      order: { buyerId: baseOrder.buyerId, sellerId: farmerUser.uid, status: 'payment_pending' },
+    });
+    assert.equal(logisticsView.canPay, false);
+    assert.equal(logisticsView.viewType, 'logistics_pending');
+    assert.equal(logisticsView.title, 'Payment Pending');
+
+    // E. Administrator
+    const adminView = getOrderPaymentRoleView({
+      user: { id: adminUser.uid, role: adminUser.role },
+      order: { buyerId: baseOrder.buyerId, sellerId: farmerUser.uid, status: 'payment_pending' },
+    });
+    assert.equal(adminView.canPay, false);
+    assert.equal(adminView.viewType, 'admin_pending');
+    assert.equal(adminView.title, 'Payment Pending');
+
+    // F. Escrow funded presentation
+    const fundedFarmerView = getOrderPaymentRoleView({
+      user: { id: farmerUser.uid, role: farmerUser.role },
+      order: { buyerId: baseOrder.buyerId, sellerId: farmerUser.uid, status: 'escrow_funded' },
+    });
+    assert.equal(fundedFarmerView.canPay, false);
+    assert.equal(fundedFarmerView.viewType, 'escrow_funded');
+    assert.ok(fundedFarmerView.description.includes('produce harvest, quality packaging, and dock dispatch'));
+  }
+  console.log('✔ Passed: Role-aware UI view resolution strictly confines payment CTA to purchasing buyer.');
+  passed++;
+
+  // ====================================================
+  // 22. Farmer cannot initiate buyer payment (Phase 3 & Phase 6)
+  // ====================================================
+  console.log('TEST 22: Farmer producer cannot initiate payment order (403 AuthorizationError)');
+  {
+    setupStandardOrder();
+
+    await assert.rejects(
+      async () => {
+        await service.createPaymentOrder(baseOrder.id, farmerUser);
+      },
+      (err: unknown) => {
+        return err instanceof AuthorizationError && err.statusCode === 403;
+      }
+    );
+  }
+  console.log('✔ Passed: Farmer producer strictly rejected from initiating payment order.');
+  passed++;
+
+  // ====================================================
+  // 23. FPO producer cannot initiate buyer payment (Phase 3 & Phase 6)
+  // ====================================================
+  console.log('TEST 23: FPO producer cannot initiate payment order (403 AuthorizationError)');
+  {
+    setupStandardOrder();
+
+    await assert.rejects(
+      async () => {
+        await service.createPaymentOrder(baseOrder.id, fpoUser);
+      },
+      (err: unknown) => {
+        return err instanceof AuthorizationError && err.statusCode === 403;
+      }
+    );
+  }
+  console.log('✔ Passed: FPO producer strictly rejected from initiating payment order.');
+  passed++;
+
+  // ====================================================
+  // 24. Logistics partner cannot initiate buyer payment (Phase 3 & Phase 6)
+  // ====================================================
+  console.log('TEST 24: Logistics partner cannot initiate payment order (403 AuthorizationError)');
+  {
+    setupStandardOrder();
+
+    await assert.rejects(
+      async () => {
+        await service.createPaymentOrder(baseOrder.id, logisticsUser);
+      },
+      (err: unknown) => {
+        return err instanceof AuthorizationError && err.statusCode === 403;
+      }
+    );
+  }
+  console.log('✔ Passed: Logistics partner strictly rejected from initiating payment order.');
+  passed++;
+
+  // ====================================================
+  // 25. Administrator cannot initiate customer payment (Phase 3 & Phase 6)
+  // ====================================================
+  console.log('TEST 25: Administrator cannot accidentally initiate payment as payer (403 AuthorizationError)');
+  {
+    setupStandardOrder();
+
+    await assert.rejects(
+      async () => {
+        await service.createPaymentOrder(baseOrder.id, adminUser);
+      },
+      (err: unknown) => {
+        return err instanceof AuthorizationError && err.statusCode === 403;
+      }
+    );
+  }
+  console.log('✔ Passed: Administrator strictly prohibited from initiating customer payment.');
+  passed++;
+
+  // ====================================================
+  // 26. Unrelated buyer cannot initiate payment for another buyer order (Phase 3 & Phase 6)
+  // ====================================================
+  console.log('TEST 26: Buyer attempting payment for another buyer order is strictly rejected (403)');
+  {
+    setupStandardOrder();
+
+    await assert.rejects(
+      async () => {
+        await service.createPaymentOrder(baseOrder.id, attackerUser);
+      },
+      (err: unknown) => {
+        return (
+          err instanceof AuthorizationError &&
+          err.statusCode === 403 &&
+          err.message.includes('Only the purchasing buyer')
+        );
+      }
+    );
+  }
+  console.log('✔ Passed: Cross-buyer unauthorized payment initiation strictly rejected.');
+  passed++;
+
+  // ====================================================
+  // 27. Purchasing buyer who owns order successfully initiates payment
+  // ====================================================
+  console.log('TEST 27: Purchasing buyer who placed order successfully initiates payment');
+  {
+    setupStandardOrder();
+    const config = await service.createPaymentOrder(baseOrder.id, buyerUser);
+    assert.ok(config.providerOrderId.startsWith('order_'));
+    assert.equal(config.orderNumber, baseOrder.orderNumber);
+    assert.equal(config.amountPaise, baseOrder.totalMinor);
+  }
+  console.log('✔ Passed: Purchasing buyer correctly authorized to initiate escrow payment.');
+  passed++;
+
+  // ====================================================
+  // 28. Already-funded order rejects duplicate payment creation
+  // ====================================================
+  console.log('TEST 28: Already-funded order rejects duplicate payment creation (409)');
+  {
+    setupStandardOrder();
+    store.orders.set(baseOrder.id, {
+      ...baseOrder,
+      status: 'escrow_funded',
+      paymentStatus: 'escrow_locked',
+    });
+
+    await assert.rejects(
+      async () => {
+        await service.createPaymentOrder(baseOrder.id, buyerUser);
+      },
+      (err: unknown) => {
+        return (
+          err instanceof AppError &&
+          err.statusCode === 409 &&
+          err.code === 'INVALID_STATUS_TRANSITION'
+        );
+      }
+    );
+  }
+  console.log('✔ Passed: Funded order safely rejects duplicate payment initiation.');
   passed++;
 
   console.log('\n====================================================');

@@ -29,9 +29,11 @@ import {
   AlertTriangle,
   CreditCard,
   Lock,
+  Clock,
 } from 'lucide-react';
 import { useToast } from '@/components/feedback/toast';
 import { apiOrderService } from '@/services/api/order.service';
+import { getOrderPaymentRoleView } from '@/lib/order-helpers';
 
 export default function OrderDetailPage() {
   const params = useParams();
@@ -165,6 +167,8 @@ export default function OrderDetailPage() {
     isCancellable &&
     (role === 'admin' || role === 'buyer' || role === 'consumer' || user?.id === order.buyerId);
 
+  const paymentView = getOrderPaymentRoleView({ user, order });
+
   const handleConfirmCancel = async () => {
     setCancelling(true);
     try {
@@ -244,40 +248,93 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Razorpay Test Mode Payment Required Card */}
+        {/* Role-Aware Payment & Escrow Status Cards */}
         {order.status === 'payment_pending' && (
-          <GlassCard variant="strong" className="p-6 border-amber-500/50 bg-amber-950/20 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Lock className="w-5 h-5 text-amber-400" />
-                  <h3 className="text-body font-bold text-foreground">Escrow Security Funding Required</h3>
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                    Razorpay Test Mode
-                  </span>
-                </div>
-                <p className="text-body-sm text-foreground/70">
-                  Inventory is currently reserved. Fund the disintermediated escrow to trigger producer harvest &amp; pack dispatch.
-                </p>
-              </div>
+          <>
+            {paymentView.canPay ? (
+              /* Purchasing Buyer: Actionable Payment Card */
+              <GlassCard variant="strong" className="p-6 border-amber-500/50 bg-amber-950/20 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-5 h-5 text-amber-400" />
+                      <h3 className="text-body font-bold text-foreground">{paymentView.title}</h3>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        {paymentView.badgeText}
+                      </span>
+                    </div>
+                    <p className="text-body-sm text-foreground/70">
+                      {paymentView.description}
+                    </p>
+                  </div>
 
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="primary"
-                  size="md"
-                  loading={paying || verifyingPayment}
-                  onClick={handlePayWithRazorpay}
-                  leftIcon={<CreditCard className="w-4 h-4" />}
-                >
-                  {verifyingPayment
-                    ? 'Verifying Payment...'
-                    : paying
-                    ? 'Opening Checkout...'
-                    : `Pay ${formatCurrency(order.totalAmount)}`}
-                </Button>
-              </div>
-            </div>
-          </GlassCard>
+                  <div className="flex items-center gap-3">
+                    <Button
+                      variant="primary"
+                      size="md"
+                      loading={paying || verifyingPayment}
+                      onClick={handlePayWithRazorpay}
+                      leftIcon={<CreditCard className="w-4 h-4" />}
+                    >
+                      {verifyingPayment
+                        ? 'Verifying Payment...'
+                        : paying
+                        ? 'Opening Checkout...'
+                        : `Pay ${formatCurrency(order.totalAmount)}`}
+                    </Button>
+                  </div>
+                </div>
+              </GlassCard>
+            ) : paymentView.viewType === 'farmer_awaiting' ? (
+              /* Farmer / FPO Producer: Non-actionable Awaiting Buyer Payment Card */
+              <GlassCard variant="strong" className="p-6 border-amber-500/40 bg-amber-950/20 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-amber-400" />
+                      <h3 className="text-body font-bold text-foreground">{paymentView.title}</h3>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        {paymentView.badgeText}
+                      </span>
+                    </div>
+                    <p className="text-body-sm text-foreground/70">
+                      {paymentView.description}
+                    </p>
+                  </div>
+                  <div className="text-right sm:shrink-0">
+                    <span className="text-caption text-foreground/50 block">Amount Due from Buyer:</span>
+                    <span className="text-body font-mono font-bold text-amber-400">
+                      {formatCurrency(order.totalAmount)}
+                    </span>
+                  </div>
+                </div>
+              </GlassCard>
+            ) : (
+              /* Logistics / Admin: Non-actionable Payment Pending Status Card */
+              <GlassCard variant="strong" className="p-6 border-surface-border bg-surface-primary/80 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-5 h-5 text-amber-400" />
+                      <h3 className="text-body font-bold text-foreground">{paymentView.title}</h3>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-surface-border text-foreground/70 border border-surface-border">
+                        {paymentView.badgeText}
+                      </span>
+                    </div>
+                    <p className="text-body-sm text-foreground/70">
+                      {paymentView.description}
+                    </p>
+                  </div>
+                  <div className="text-right sm:shrink-0">
+                    <span className="text-caption text-foreground/50 block">Consignment Total:</span>
+                    <span className="text-body font-mono font-bold text-foreground">
+                      {formatCurrency(order.totalAmount)}
+                    </span>
+                  </div>
+                </div>
+              </GlassCard>
+            )}
+          </>
         )}
 
         {/* Escrow Funded Confirmation Banner */}
@@ -285,9 +342,10 @@ export default function OrderDetailPage() {
           <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/40 flex items-center gap-3 text-emerald-300">
             <ShieldCheck className="w-5 h-5 shrink-0 text-emerald-400" />
             <div>
-              <p className="font-bold text-body-sm">Escrow Security Funded &amp; Locked</p>
+              <p className="font-bold text-body-sm">{paymentView.title || 'Escrow Security Funded & Locked'}</p>
               <p className="text-caption text-emerald-300/80">
-                Payment verified cryptographically via Razorpay. Funds are held safely in Gramora Escrow pending dock delivery inspection.
+                {paymentView.description ||
+                  'Payment verified cryptographically via Razorpay. Funds are held safely in Gramora Escrow pending dock delivery inspection.'}
               </p>
             </div>
           </div>
