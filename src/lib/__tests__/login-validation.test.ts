@@ -124,11 +124,25 @@ async function runLoginValidationTests() {
     passed++;
   }
 
-  // TEST 9: Mobile to email resolution for generic mobile
+  // TEST 9: Mobile to email resolution for generic mobile & registration identity
   {
-    console.log('TEST 9: Mobile to email resolution for generic mobile');
+    console.log('TEST 9: Mobile to email resolution for generic mobile & registration identity');
     assert.equal(resolveMobileToEmail('9123456780'), '9123456780@gramora.farm');
-    console.log('✔ Passed: Generic mobile resolves to standard domain identifier for Firebase Auth.\n');
+    // Test A & B: Specific requirement 7077350157 resolution
+    const mobile = '7077350157';
+    const cleanMobile = normalizeIndianMobile('+91 70773 50157');
+    assert.equal(cleanMobile, mobile);
+    assert.equal(resolveMobileToEmail(cleanMobile), '7077350157@gramora.farm');
+    assert.equal(resolveMobileToEmail(mobile), '7077350157@gramora.farm');
+
+    // Registration identity: Firebase Auth identifier is resolved mobile, while profile contact email is preserved
+    const enteredEmail = 'farmer.user@gmail.com';
+    const authIdentifier = resolveMobileToEmail(cleanMobile);
+    assert.equal(authIdentifier, '7077350157@gramora.farm');
+    assert.notEqual(authIdentifier, enteredEmail);
+    assert.equal(enteredEmail, 'farmer.user@gmail.com');
+
+    console.log('✔ Passed: Mobile 7077350157 resolves to 7077350157@gramora.farm for both login and registration.\n');
     passed++;
   }
 

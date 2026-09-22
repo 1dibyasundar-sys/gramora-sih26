@@ -28,6 +28,28 @@ export class UserRepository extends BaseFirestoreRepository<ServerUserProfile> {
   }
 
   /**
+   * Look up a user profile by mobile phone number.
+   * Matches both '+91 XXXXXXXXXX' and raw 'XXXXXXXXXX' formats.
+   */
+  async findByPhone(rawPhone: string): Promise<ServerUserProfile | null> {
+    const digits = rawPhone.replace(/\D/g, '').slice(-10);
+    if (digits.length !== 10) return null;
+
+    const variants = [
+      `+91 ${digits}`,
+      `+91${digits}`,
+      digits,
+    ];
+
+    const snapshot = await this.collection.where('phone', 'in', variants).limit(1).get();
+    if (snapshot.empty) {
+      return null;
+    }
+    const doc = snapshot.docs[0];
+    return { id: doc.id, ...(doc.data() as object) } as ServerUserProfile;
+  }
+
+  /**
    * Creates an authoritative application profile bound to the verified Firebase Auth UID.
    */
   async createProfile(

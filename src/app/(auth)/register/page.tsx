@@ -27,6 +27,7 @@ import { LanguageSelector } from '@/components/layout/language-selector';
 import {
   normalizeIndianMobile,
   isValidIndianMobile,
+  resolveMobileToEmail,
   getRoleDashboardPath,
 } from '@/lib/auth-helpers';
 
@@ -141,16 +142,19 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
+      const authEmail = resolveMobileToEmail(cleanMobile);
+
       const onboardingData: Record<string, unknown> = {
         role: selectedRole,
         phone: `+91 ${cleanMobile}`,
+        email: trimmedEmail,
         ...(selectedRole === 'farmer' && parsedLandArea !== undefined
           ? { farmerProfile: { landHoldingAcres: parsedLandArea } }
           : {}),
       };
 
       if (isFirebaseConfigured) {
-        const u = await signUp(trimmedEmail, password, onboardingData);
+        const u = await signUp(authEmail, password, onboardingData);
         success(`Account created successfully as ${t(`auth.${selectedRole}` as any) || selectedRole}!`);
         const targetPath = getRoleDashboardPath(u.role);
         router.push(targetPath);

@@ -28,10 +28,18 @@ export default function ProfilePage() {
   const [email, setEmail] = useState(user?.email || 'ramesh.patel@ananyafarms.mock');
   const [phone, setPhone] = useState(user?.phone || '+91 98230 45678');
   const [organization, setOrganization] = useState(user?.organization || 'Ananya Farms');
-  const [village, setVillage] = useState(user?.location.villageOrCity || 'Dindori');
-  const [district, setDistrict] = useState(user?.location.district || 'Nashik');
-  const [state, setState] = useState(user?.location.state || 'Maharashtra');
-  const [pincode, setPincode] = useState(user?.location.pincode || '422202');
+  const [village, setVillage] = useState(
+    user?.location?.villageOrCity || 'Dindori'
+  );
+  const [district, setDistrict] = useState(
+    user?.location?.district || 'Nashik'
+  );
+  const [state, setState] = useState(
+    user?.location?.state || 'Maharashtra'
+  );
+  const [pincode, setPincode] = useState(
+    user?.location?.pincode || '422202'
+  );
 
   // Preferences toggles
   const [smsAlerts, setSmsAlerts] = useState(true);

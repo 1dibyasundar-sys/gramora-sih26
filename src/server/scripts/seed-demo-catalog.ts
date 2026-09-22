@@ -143,14 +143,104 @@ const CROPS = [
     description: 'Compact, round green cabbage heads. Crisp and free from pest damage. Harvested at optimal maturity.',
     shelfLifeDays: 12,
     storageType: 'Cold Storage (0-2°C)',
-  }
+  },
+  // --- PULSES & LENTILS ---
+  {
+    key: 'toor_dal',
+    title: 'Organic Toor Dal (Pigeon Pea)',
+    category: 'pulses',
+    unit: 'kg',
+    pricePerUnit: 145,
+    minOrderQuantity: 25,
+    tags: ['Toor Dal', 'Pigeon Pea', 'Pulses', 'Organic'],
+    description: 'Unpolished organic toor dal (arhar dal) sourced directly from certified organic farms in Latur. High protein, naturally sun-dried, chemical-free processing.',
+    shelfLifeDays: 180,
+    storageType: 'Ambient Warehouse',
+  },
+  {
+    key: 'chickpeas',
+    title: 'Premium Kabuli Chickpeas (Chana)',
+    category: 'pulses',
+    unit: 'quintal',
+    pricePerUnit: 7800,
+    minOrderQuantity: 2,
+    tags: ['Chickpeas', 'Kabuli Chana', 'Pulses', 'Grade A'],
+    description: 'Export-quality bold 12mm Kabuli chickpeas. Uniform size, high dietary fiber, excellent boiling texture. Ideal for wholesale institutional procurement.',
+    shelfLifeDays: 240,
+    storageType: 'Ambient Warehouse',
+  },
+  // --- SPICES & CONDIMENTS ---
+  {
+    key: 'turmeric',
+    title: 'Salem Golden Turmeric Finger',
+    category: 'spices',
+    unit: 'kg',
+    pricePerUnit: 180,
+    minOrderQuantity: 20,
+    tags: ['Turmeric', 'Salem Variety', 'Spices', 'High Curcumin'],
+    description: 'Authentic Salem golden whole turmeric fingers with high 4.8% curcumin content. Naturally cured and unpolished for medicinal and culinary excellence.',
+    shelfLifeDays: 365,
+    storageType: 'Farm Gate Dry',
+  },
+  {
+    key: 'cumin_seeds',
+    title: 'Aromatic Whole Cumin Seeds (Jeera)',
+    category: 'spices',
+    unit: 'kg',
+    pricePerUnit: 340,
+    minOrderQuantity: 15,
+    tags: ['Cumin', 'Jeera', 'Spices', 'Aromatic'],
+    description: 'Machine-cleaned machine-sorted whole cumin seeds from Unjha mandi belt. Rich essential oil aroma, 99.5% purity, zero foreign matter.',
+    shelfLifeDays: 365,
+    storageType: 'Farm Gate Dry',
+  },
+  // --- OILSEEDS ---
+  {
+    key: 'mustard_seeds',
+    title: 'High-Oil Black Mustard Seeds (Sarson)',
+    category: 'oilseeds',
+    unit: 'quintal',
+    pricePerUnit: 5800,
+    minOrderQuantity: 3,
+    tags: ['Mustard', 'Sarson', 'Oilseeds', 'High Oil'],
+    description: 'Clean bold black mustard seeds with exceptional 42% oil recovery. Low moisture content, thoroughly sorted for direct cold-pressing (Kachi Ghani).',
+    shelfLifeDays: 270,
+    storageType: 'Ambient Warehouse',
+  },
+  {
+    key: 'groundnuts',
+    title: 'Shelled Bold Groundnuts (Peanuts)',
+    category: 'oilseeds',
+    unit: 'quintal',
+    pricePerUnit: 7200,
+    minOrderQuantity: 2,
+    tags: ['Groundnut', 'Peanut', 'Oilseeds', 'Bold 40/50'],
+    description: 'Shelled bold 40/50 count groundnuts from Saurashtra. Aflatoxin-tested, crisp red-skin kernels with high oleic acid and healthy fats.',
+    shelfLifeDays: 180,
+    storageType: 'Ambient Warehouse',
+  },
 ];
 
-const ARTIFACT_DIR = 'C:/Users/Asus/.gemini/antigravity-ide/brain/22de2a17-b397-4de2-9a87-0fdd3ffa032d';
+const ARTIFACT_DIRS = [
+  'C:/Users/Asus/.gemini/antigravity-ide/brain/997f6065-812c-4527-810f-27ccb38d2072',
+  'C:/Users/Asus/.gemini/antigravity-ide/brain/22de2a17-b397-4de2-9a87-0fdd3ffa032d',
+];
+
+function findLocalImage(cropKey: string): string | null {
+  for (const dir of ARTIFACT_DIRS) {
+    if (!fs.existsSync(dir)) continue;
+    const files = fs.readdirSync(dir);
+    const matchingFile = files.find((f) => f.startsWith(cropKey) && f.endsWith('.jpg'));
+    if (matchingFile) {
+      return path.join(dir, matchingFile);
+    }
+  }
+  return null;
+}
 
 async function seedDemoCatalog() {
   console.log('====================================================');
-  console.log('SEEDING DEMO CATALOG WITH GENERATED IMAGES');
+  console.log('SEEDING DEMO CATALOG WITH REALISTIC AGRICULTURAL DATA');
   console.log('====================================================\n');
 
   const cloudinaryConf = getCloudinaryConfig();
@@ -180,17 +270,37 @@ async function seedDemoCatalog() {
     });
   }
 
-  // Find the exact image paths (since filenames have random timestamps like nashik_red_onions_1789897795629.jpg)
-  const files = fs.readdirSync(ARTIFACT_DIR);
-
   for (const crop of CROPS) {
-    const matchingFile = files.find(f => f.startsWith(crop.key) && f.endsWith('.jpg'));
-    if (!matchingFile) {
-      console.warn(`[WARN] Could not find generated image for ${crop.key}. Skipping...`);
+    const premiumTitle = `Premium Grade A ${crop.title}`;
+    const standardTitle = `Standard ${crop.title}`;
+
+    // 1. Check idempotency in Firestore
+    const existingPremiumSnap = await db
+      .collection(COLLECTIONS.PRODUCTS)
+      .where('sellerId', '==', DEMO_SELLER.uid)
+      .where('title', '==', premiumTitle)
+      .limit(1)
+      .get();
+
+    const existingStandardSnap = await db
+      .collection(COLLECTIONS.PRODUCTS)
+      .where('sellerId', '==', DEMO_SELLER.uid)
+      .where('title', '==', standardTitle)
+      .limit(1)
+      .get();
+
+    if (!existingPremiumSnap.empty && !existingStandardSnap.empty) {
+      console.log(`[IDEMPOTENT SKIP] Both variants for "${crop.title}" already exist in Firestore.`);
       continue;
     }
 
-    const localPath = path.join(ARTIFACT_DIR, matchingFile);
+    // 2. Locate local image
+    const localPath = findLocalImage(crop.key);
+    if (!localPath) {
+      console.warn(`[WARN] Could not find local generated image for ${crop.key}. Skipping...`);
+      continue;
+    }
+
     console.log(`\nProcessing ${crop.title}...`);
     console.log(`Uploading ${localPath} to Cloudinary...`);
 
@@ -205,47 +315,63 @@ async function seedDemoCatalog() {
       const secureUrl = uploadResult.secure_url;
       console.log(`Successfully uploaded: ${secureUrl}`);
 
-      // Create Premium Grade Variant
-      const premiumReq = {
-        title: `Premium Grade A ${crop.title}`,
-        category: crop.category as any,
-        variety: crop.title.split(' ')[0],
-        pricePerUnit: crop.pricePerUnit,
-        unit: crop.unit as any,
-        minOrderQuantity: crop.minOrderQuantity,
-        totalAvailableQuantity: 1000,
-        initialQuantity: 1000,
-        location: { district: 'Pune', state: 'Maharashtra' },
-        harvestDate: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0], // 2 days ago
-        shelfLifeDays: crop.shelfLifeDays,
-        qualityGrade: 'Grade A',
-        description: crop.description + ' Premium grade, uniform size and superior quality.',
-        storageType: crop.storageType,
-        organicCertified: crop.tags.includes('Organic'),
-        tags: [...crop.tags, 'Premium'],
-        images: [secureUrl],
-      };
+      // Create Premium Grade Variant if not already present
+      if (existingPremiumSnap.empty) {
+        const premiumReq = {
+          title: premiumTitle,
+          category: crop.category as any,
+          variety: crop.title.split(' ')[0],
+          pricePerUnit: crop.pricePerUnit,
+          unit: crop.unit as any,
+          minOrderQuantity: crop.minOrderQuantity,
+          totalAvailableQuantity: 1000,
+          initialQuantity: 1000,
+          location: { district: 'Pune', state: 'Maharashtra' },
+          harvestDate: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0],
+          shelfLifeDays: crop.shelfLifeDays,
+          qualityGrade: 'Grade A',
+          description: crop.description + ' Premium grade, uniform size and superior quality.',
+          storageType: crop.storageType,
+          organicCertified: crop.tags.includes('Organic'),
+          tags: [...crop.tags, 'Premium'],
+          images: [secureUrl],
+        };
 
-      console.log(`Creating Premium variant in Firestore...`);
-      const premiumProduct = await productService.createProduct(DEMO_SELLER, premiumReq as any);
-      console.log(`Created Premium Product ID: ${premiumProduct.id}`);
+        console.log(`Creating Premium variant in Firestore: "${premiumTitle}"...`);
+        const premiumProduct = await productService.createProduct(DEMO_SELLER, premiumReq as any);
+        console.log(`Created Premium Product ID: ${premiumProduct.id}`);
+      } else {
+        console.log(`[EXISTS] Premium variant "${premiumTitle}" already exists.`);
+      }
 
-      // Create Standard Grade Variant (Slightly cheaper, different quality grade)
-      const standardReq = {
-        ...premiumReq,
-        title: `Standard ${crop.title}`,
-        pricePerUnit: Math.floor(crop.pricePerUnit * 0.8), // 20% cheaper
-        totalAvailableQuantity: 2500, // More volume available
-        initialQuantity: 2500,
-        qualityGrade: 'Grade B',
-        description: crop.description + ' Standard grade, great value for processing and bulk retail.',
-        tags: [...crop.tags, 'Standard'],
-      };
+      // Create Standard Grade Variant if not already present
+      if (existingStandardSnap.empty) {
+        const standardReq = {
+          title: standardTitle,
+          category: crop.category as any,
+          variety: crop.title.split(' ')[0],
+          pricePerUnit: Math.floor(crop.pricePerUnit * 0.8), // 20% cheaper
+          unit: crop.unit as any,
+          minOrderQuantity: crop.minOrderQuantity,
+          totalAvailableQuantity: 2500,
+          initialQuantity: 2500,
+          location: { district: 'Pune', state: 'Maharashtra' },
+          harvestDate: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0],
+          shelfLifeDays: crop.shelfLifeDays,
+          qualityGrade: 'Grade B',
+          description: crop.description + ' Standard grade, great value for processing and bulk retail.',
+          storageType: crop.storageType,
+          organicCertified: crop.tags.includes('Organic'),
+          tags: [...crop.tags, 'Standard'],
+          images: [secureUrl],
+        };
 
-      console.log(`Creating Standard variant in Firestore...`);
-      const standardProduct = await productService.createProduct(DEMO_SELLER, standardReq as any);
-      console.log(`Created Standard Product ID: ${standardProduct.id}`);
-
+        console.log(`Creating Standard variant in Firestore: "${standardTitle}"...`);
+        const standardProduct = await productService.createProduct(DEMO_SELLER, standardReq as any);
+        console.log(`Created Standard Product ID: ${standardProduct.id}`);
+      } else {
+        console.log(`[EXISTS] Standard variant "${standardTitle}" already exists.`);
+      }
     } catch (err: any) {
       console.error(`[ERROR] Failed to process ${crop.key}:`, err.message);
     }

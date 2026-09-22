@@ -43,8 +43,11 @@ export function AppImage({
     const props = { className: "w-8 h-8 text-primary-500/50" };
     switch (category) {
       case 'grains': return <Wheat {...props} />;
+      case 'pulses': return <Wheat {...props} />;
       case 'fruits': return <Apple {...props} />;
       case 'vegetables': return <Carrot {...props} />;
+      case 'spices': return <Sprout {...props} />;
+      case 'oilseeds': return <Sprout {...props} />;
       case 'dairy': return <Milk {...props} />;
       default: return <Sprout {...props} />;
     }

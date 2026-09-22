@@ -21,7 +21,7 @@ import { ServerProduct, ServerProductLot } from '../domain/product';
 import { ServerInventoryLot, calculateInventoryStatus } from '../domain/inventory';
 
 const TARGET_SELLER_ID = 'gramora-demo-farmer';
-const EXPECTED_DEMO_COUNT = 20;
+const EXPECTED_DEMO_COUNT = 32;
 const VALID_QUANTITIES = [1000, 2500];
 
 interface ProductReconciliationPlan {

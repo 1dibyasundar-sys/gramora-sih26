@@ -54,11 +54,11 @@ export interface User {
   phone: string;
   role: UserRole;
   organization?: string;
-  location: {
-    villageOrCity: string;
-    district: string;
-    state: string;
-    pincode: string;
+  location?: {
+    villageOrCity?: string;
+    district?: string;
+    state?: string;
+    pincode?: string;
   };
   avatarUrl?: string;
   verified: boolean;

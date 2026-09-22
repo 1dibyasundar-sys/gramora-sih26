@@ -98,14 +98,15 @@ export function FilterPanel({ filters, onChange, onReset, className }: FilterPan
           <input
             type="range"
             min="10"
-            max="1000"
-            step="10"
-            value={filters.maxPrice || 1000}
+            max="10000"
+            step="50"
+            value={filters.maxPrice || 10000}
             onChange={(e) => onChange({ ...filters, maxPrice: Number(e.target.value) })}
-            className="w-full accent-primary-500 cursor-pointer"
+            aria-label={t('marketplace.priceRange')}
+            className="w-full accent-primary-500 cursor-pointer h-2 bg-surface-elevated rounded-lg appearance-none border border-surface-border/60"
           />
-          <span className="text-body-sm font-bold text-primary-400 min-w-[60px] text-right">
-            ₹{filters.maxPrice || 1000}
+          <span className="text-body-sm font-bold text-primary-400 min-w-[70px] text-right font-mono">
+            ₹{(filters.maxPrice || 10000).toLocaleString('en-IN')}
           </span>
         </div>
       </div>

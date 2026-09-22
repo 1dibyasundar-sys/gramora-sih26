@@ -103,25 +103,36 @@ export class FirebaseAuthService implements IAuthService {
     this.saveToken(token);
 
     // 2. Call backend onboarding API to initialize authoritative profile in Firestore
-    const res = await fetch('/api/v1/users/onboard', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        ...onboardingData,
-        email,
-      }),
-    });
+    try {
+      const res = await fetch('/api/v1/users/onboard', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          ...onboardingData,
+          email: (onboardingData.email as string) || email,
+        }),
+      });
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error?.message || 'Failed to complete profile onboarding.');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error?.message || 'Failed to complete profile onboarding.');
+      }
+
+      const json = await res.json();
+      return json.data as User;
+    } catch (onboardingError) {
+      // Rollback: delete newly-created Firebase Auth user to prevent orphan accounts
+      try {
+        await credential.user.delete();
+        this.saveToken(null);
+      } catch (deleteError) {
+        console.error('Failed to rollback Firebase Auth user after onboarding failure:', deleteError);
+      }
+      throw onboardingError;
     }
-
-    const json = await res.json();
-    return json.data as User;
   }
 
   async signOut(): Promise<void> {

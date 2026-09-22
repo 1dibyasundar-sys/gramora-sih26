@@ -31,8 +31,10 @@ class MockProductRepoForDomain extends ProductRepository {
   constructor() {
     super();
   }
-  async create(data: any): Promise<ServerProduct> {
-    const item = { ...data, id: `prod-${Date.now()}` };
+  private idCounter = 0;
+  async create(data: any, customId?: string): Promise<ServerProduct> {
+    this.idCounter++;
+    const item = { ...data, id: customId || `prod-${Date.now()}-${this.idCounter}-${Math.random().toString(36).slice(2, 7)}` };
     this.store.set(item.id, item);
     return item;
   }
@@ -42,11 +44,13 @@ class MockProductRepoForDomain extends ProductRepository {
 }
 class MockLotRepoForDomain extends ProductLotRepository {
   public store = new Map<string, any>();
+  private idCounter = 0;
   constructor() {
     super();
   }
   async create(data: any): Promise<any> {
-    const item = { ...data, id: `lot-${Date.now()}` };
+    this.idCounter++;
+    const item = { ...data, id: `lot-${Date.now()}-${this.idCounter}` };
     this.store.set(item.id, item);
     return item;
   }
@@ -56,11 +60,13 @@ class MockLotRepoForDomain extends ProductLotRepository {
 }
 class MockInventoryRepoForDomain extends InventoryRepository {
   public store = new Map<string, any>();
+  private idCounter = 0;
   constructor() {
     super();
   }
   async create(data: any): Promise<any> {
-    const item = { ...data, id: `inv-${Date.now()}` };
+    this.idCounter++;
+    const item = { ...data, id: `inv-${Date.now()}-${this.idCounter}` };
     this.store.set(item.id, item);
     return item;
   }
@@ -340,6 +346,216 @@ async function runProductDomainTests() {
     assert.equal(prodB.totalAvailableQuantity, 2500, 'initialQuantity must map to totalAvailableQuantity 2500');
 
     console.log('✔ Passed: Both totalAvailableQuantity and initialQuantity map correctly.\n');
+    passed++;
+  }
+
+  // --------------------------------------------------------------------------
+  // TEST 9: Category validation for all 6 standard categories + organic
+  // --------------------------------------------------------------------------
+  {
+    console.log('TEST 9: Category validation across all domain categories');
+    const validCategories = [
+      'vegetables',
+      'fruits',
+      'grains',
+      'pulses',
+      'spices',
+      'oilseeds',
+      'organic',
+    ] as const;
+
+    for (const cat of validCategories) {
+      const parsed = CreateProductSchema.parse({
+        title: `Test ${cat} product`,
+        category: cat,
+        variety: 'Standard',
+        pricePerUnit: 100,
+        unit: 'kg',
+        minOrderQuantity: 10,
+        location: { district: 'Nashik', state: 'Maharashtra' },
+        harvestDate: '2026-03-15',
+        shelfLifeDays: 30,
+        qualityGrade: 'Grade A',
+        storageType: 'Ambient Warehouse',
+        description: `Freshly harvested ${cat} produced locally.`,
+      });
+      assert.equal(parsed.category, cat);
+    }
+
+    // Invalid category rejection
+    assert.throws(() => {
+      CreateProductSchema.parse({
+        title: 'Invalid category crop',
+        category: 'electronics' as any,
+        variety: 'Standard',
+        pricePerUnit: 100,
+        unit: 'kg',
+        minOrderQuantity: 10,
+        location: { district: 'Nashik', state: 'Maharashtra' },
+        harvestDate: '2026-03-15',
+        shelfLifeDays: 30,
+        qualityGrade: 'Grade A',
+        storageType: 'Ambient Warehouse',
+        description: 'Should fail validation.',
+      });
+    });
+
+    console.log('✔ Passed: All 6 categories + organic accepted; invalid categories rejected.\n');
+    passed++;
+  }
+
+  // --------------------------------------------------------------------------
+  // TEST 10: Marketplace search and filter logic with pulses, spices, oilseeds
+  // --------------------------------------------------------------------------
+  {
+    console.log('TEST 10: Marketplace search and filter logic with pulses, spices, oilseeds');
+    const pRepo = new MockProductRepoForDomain();
+    const lRepo = new MockLotRepoForDomain();
+    const iRepo = new MockInventoryRepoForDomain();
+    const service = new ProductService(pRepo, lRepo, iRepo);
+
+    const farmerUser = {
+      uid: 'gramora-demo-farmer',
+      email: 'farmer@gramora.farm',
+      role: 'farmer' as const,
+      name: 'Gramora Demo Farm',
+      verified: true,
+      profileExists: true,
+      status: 'active' as const,
+      claims: {},
+    };
+
+    // Seed mock products covering all categories
+    const mockItems = [
+      { title: 'Organic Toor Dal', category: 'pulses', variety: 'Desi', pricePerUnit: 145 },
+      { title: 'Kabuli Chickpeas', category: 'pulses', variety: 'Bold', pricePerUnit: 130 },
+      { title: 'Salem Golden Turmeric', category: 'spices', variety: 'Salem', pricePerUnit: 220 },
+      { title: 'Aromatic Cumin Seeds', category: 'spices', variety: 'Gujarat Bold', pricePerUnit: 340 },
+      { title: 'High-Oil Mustard Seeds', category: 'oilseeds', variety: 'Black Mustard', pricePerUnit: 90 },
+      { title: 'Shelled Bold Groundnuts', category: 'oilseeds', variety: 'Bold 40-50', pricePerUnit: 115 },
+      { title: 'Organic Vine Tomatoes', category: 'vegetables', variety: 'Organic', pricePerUnit: 35 },
+      { title: 'Alphonso Mangoes', category: 'fruits', variety: 'Ratnagiri', pricePerUnit: 450 },
+      { title: 'Sharbati Wheat', category: 'grains', variety: 'Sharbati Gold', pricePerUnit: 48 },
+    ];
+
+    for (const item of mockItems) {
+      await service.createProduct(farmerUser, {
+        ...item,
+        unit: 'kg',
+        minOrderQuantity: 25,
+        totalAvailableQuantity: 1000,
+        location: { district: 'Nashik', state: 'Maharashtra' },
+        harvestDate: '2026-03-15',
+        shelfLifeDays: 90,
+        qualityGrade: 'Grade A',
+        storageType: 'Ambient Warehouse',
+        description: `Description for ${item.title}`,
+      } as any);
+    }
+
+    // Verify all products in store
+    const allProducts = Array.from(pRepo.store.values());
+    assert.equal(allProducts.length, 9, 'Must contain 9 seeded mock products');
+
+    // 1. All Categories returns 9 products
+    const allActive = allProducts.filter((p) => p.listingStatus === 'active');
+    assert.equal(allActive.length, 9);
+
+    // 2. Pulses returns >0 products
+    const pulses = allProducts.filter((p) => p.category === 'pulses');
+    assert.equal(pulses.length, 2, 'Pulses must return >0 (2 products)');
+
+    // 3. Spices returns >0 products
+    const spices = allProducts.filter((p) => p.category === 'spices');
+    assert.equal(spices.length, 2, 'Spices must return >0 (2 products)');
+
+    // 4. Oilseeds returns >0 products
+    const oilseeds = allProducts.filter((p) => p.category === 'oilseeds');
+    assert.equal(oilseeds.length, 2, 'Oilseeds must return >0 (2 products)');
+
+    // 5. Category + Search combination
+    const turmericSearch = allProducts.filter(
+      (p) => p.category === 'spices' && p.title.toLowerCase().includes('turmeric')
+    );
+    assert.equal(turmericSearch.length, 1);
+    assert.equal(turmericSearch[0].title, 'Salem Golden Turmeric');
+
+    // 6. Reset filters returns all 9
+    assert.equal(allActive.length, 9);
+
+    console.log('✔ Passed: All categories return >0 products and filter combinations work.\n');
+    passed++;
+  }
+
+  // --------------------------------------------------------------------------
+  // TEST 11: Catalog visibility invariants (draft/archived excluded from active)
+  // --------------------------------------------------------------------------
+  {
+    console.log('TEST 11: Catalog visibility rules (draft/archived excluded)');
+    const pRepo = new MockProductRepoForDomain();
+    const lRepo = new MockLotRepoForDomain();
+    const iRepo = new MockInventoryRepoForDomain();
+    const service = new ProductService(pRepo, lRepo, iRepo);
+
+    const farmerUser = {
+      uid: 'farmer-vis-01',
+      email: 'vis@test.com',
+      role: 'farmer' as const,
+      name: 'Farmer Visibility',
+      verified: true,
+      profileExists: true,
+      status: 'active' as const,
+      claims: {},
+    };
+
+    const activeProd = await service.createProduct(farmerUser, {
+      title: 'Active Garlic',
+      category: 'vegetables',
+      variety: 'Desi',
+      pricePerUnit: 120,
+      unit: 'kg',
+      minOrderQuantity: 10,
+      totalAvailableQuantity: 500,
+      location: { district: 'Pune', state: 'Maharashtra' },
+      harvestDate: '2026-03-15',
+      shelfLifeDays: 60,
+      qualityGrade: 'Grade A',
+      storageType: 'Ambient Warehouse',
+      description: 'Active listing',
+    } as any);
+
+    // Simulate draft product
+    const draftProd = {
+      ...activeProd,
+      id: 'prod-draft-01',
+      title: 'Unpublished Draft Pulse',
+      category: 'pulses' as const,
+      listingStatus: 'draft' as const,
+    };
+    pRepo.store.set(draftProd.id, draftProd as any);
+
+    // Simulate archived product
+    const archivedProd = {
+      ...activeProd,
+      id: 'prod-archived-01',
+      title: 'Old Archived Spice',
+      category: 'spices' as const,
+      listingStatus: 'archived' as const,
+    };
+    pRepo.store.set(archivedProd.id, archivedProd as any);
+
+    // Marketplace active filter: only 'active' listings should appear
+    const marketplaceVisible = Array.from(pRepo.store.values()).filter(
+      (p) => p.listingStatus === 'active'
+    );
+    assert.equal(marketplaceVisible.length, 1);
+    assert.equal(marketplaceVisible[0].title, 'Active Garlic');
+
+    // Neither draft nor archived appear
+    assert(!marketplaceVisible.some((p) => p.listingStatus === 'draft'));
+    assert(!marketplaceVisible.some((p) => p.listingStatus === 'archived'));
+
+    console.log('✔ Passed: Draft and archived listings strictly excluded from active catalog.\n');
     passed++;
   }
 

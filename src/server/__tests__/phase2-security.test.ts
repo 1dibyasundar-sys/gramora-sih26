@@ -29,6 +29,21 @@ class MockInMemoryUserRepo extends UserRepository {
     return this.store.get(id) || null;
   }
 
+  async findByPhone(rawPhone: string): Promise<ServerUserProfile | null> {
+    const digits = rawPhone.replace(/\D/g, '').slice(-10);
+    const profiles = Array.from(this.store.values());
+    for (let i = 0; i < profiles.length; i++) {
+      const profile = profiles[i];
+      if (profile.phone) {
+        const profileDigits = profile.phone.replace(/\D/g, '').slice(-10);
+        if (profileDigits === digits) {
+          return profile;
+        }
+      }
+    }
+    return null;
+  }
+
   async createProfile(
     uid: string,
     profileData: Omit<ServerUserProfile, 'id' | 'uid' | 'createdAt' | 'updatedAt'>

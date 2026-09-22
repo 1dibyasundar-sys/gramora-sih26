@@ -83,6 +83,16 @@ export class UserService {
       );
     }
 
+    // 1b. Enforce server-authoritative mobile number uniqueness
+    if (input.phone) {
+      const existingPhone = await this.userRepo.findByPhone(input.phone);
+      if (existingPhone && existingPhone.uid !== authUser.uid) {
+        throw new ConflictError(
+          'An account is already registered with this mobile number. Please sign in instead.'
+        );
+      }
+    }
+
     // 2. Canonicalize role and guard against administrative self-escalation
     const canonicalRole = normalizeRole(input.role);
     if (canonicalRole === 'admin') {
@@ -108,6 +118,7 @@ export class UserService {
 
     const defaultName =
       input.name ||
+      input.email?.split('@')[0] ||
       authUser.email?.split('@')[0] ||
       (input.phone ? `User ${input.phone.replace(/\D/g, '').slice(-4)}` : 'Gramora Member');
 

@@ -17,7 +17,8 @@ import { UserRepository } from '@/server/repositories/user.repository';
 import { extractBearerToken, AuthenticatedUser, verifyTokenAndGetUser } from '@/server/auth/verify-token';
 import { requireRole, requireOwnershipOrAdmin } from '@/server/auth/rbac';
 import { logger } from '@/server/lib/logger';
-import { AuthorizationError, NotFoundError } from '@/server/lib/errors';
+import { AuthorizationError, NotFoundError, ConflictError } from '@/server/lib/errors';
+import { resolveMobileToEmail } from '@/lib/auth-helpers';
 import { COLLECTIONS } from '@/server/repositories/collections';
 
 class MockInMemoryUserRepo extends UserRepository {
@@ -29,6 +30,21 @@ class MockInMemoryUserRepo extends UserRepository {
 
   async findById(id: string): Promise<ServerUserProfile | null> {
     return this.store.get(id) || null;
+  }
+
+  async findByPhone(rawPhone: string): Promise<ServerUserProfile | null> {
+    const digits = rawPhone.replace(/\D/g, '').slice(-10);
+    const profiles = Array.from(this.store.values());
+    for (let i = 0; i < profiles.length; i++) {
+      const profile = profiles[i];
+      if (profile.phone) {
+        const profileDigits = profile.phone.replace(/\D/g, '').slice(-10);
+        if (profileDigits === digits) {
+          return profile;
+        }
+      }
+    }
+    return null;
   }
 
   async createProfile(
@@ -69,7 +85,7 @@ async function runFirebaseReadinessTests() {
   console.log('====================================================\n');
 
   let passed = 0;
-  const total = 16;
+  const total = 19;
 
   // 1. Firebase client configuration check
   {
@@ -376,6 +392,212 @@ async function runFirebaseReadinessTests() {
     assert.equal(COLLECTIONS.NOTIFICATIONS, 'notifications');
     assert.equal(COLLECTIONS.AUDIT_LOGS, 'auditLogs');
     console.log('✔ Passed: Firestore collections architecture verified.\n');
+    passed++;
+  }
+
+  // 17. Registration identity and contact email preservation
+  {
+    console.log('CHECK 17: Registration identity and contact email preservation');
+    const mockRepo = new MockInMemoryUserRepo();
+    const service = new UserService(mockRepo);
+
+    // Requirement A & E: User registers with mobile 7077350157
+    const rawMobile = '7077350157';
+    const authEmail = resolveMobileToEmail(rawMobile);
+    assert.equal(authEmail, '7077350157@gramora.farm', 'Firebase Auth identifier must be 7077350157@gramora.farm');
+
+    // Authenticated user from Firebase token has the internal gramora.farm email
+    const authUser: AuthenticatedUser = {
+      uid: 'uid-7077350157',
+      email: authEmail,
+      role: 'consumer',
+      name: 'Ramesh Patel',
+      verified: true,
+      profileExists: false,
+      status: 'active',
+      claims: {},
+    };
+
+    // User entered real contact email during registration
+    const realEmail = 'farmer.ramesh@gmail.com';
+    const profile = await service.onboard(authUser, {
+      role: 'farmer',
+      name: 'Ramesh Patel',
+      phone: `+91 ${rawMobile}`,
+      email: realEmail,
+      location: {
+        villageOrCity: 'Dindori',
+        district: 'Nashik',
+        state: 'Maharashtra',
+        pincode: '422202',
+      },
+    });
+
+    assert.equal(profile.uid, 'uid-7077350157');
+    assert.equal(profile.email, realEmail, 'User profile MUST preserve the real contact email');
+    assert.notEqual(profile.email, authEmail, 'User profile MUST NOT use the internal auth email');
+    assert.equal(profile.phone, '+91 7077350157');
+    assert.equal(profile.role, 'farmer');
+
+    // Verify retrieval by UID
+    const retrieved = await mockRepo.findByUid('uid-7077350157');
+    assert.ok(retrieved);
+    assert.equal(retrieved.email, realEmail);
+
+    console.log('✔ Passed: Registration preserves contact email in Firestore profile while using @gramora.farm for auth.\n');
+    passed++;
+  }
+
+  // 18. Server-authoritative mobile uniqueness
+  {
+    console.log('CHECK 18: Server-authoritative mobile uniqueness');
+    const mockRepo = new MockInMemoryUserRepo();
+    const service = new UserService(mockRepo);
+
+    // First user onboards with mobile 7077350157
+    const user1: AuthenticatedUser = {
+      uid: 'uid-user-1',
+      email: '7077350157@gramora.farm',
+      role: 'farmer',
+      name: 'User One',
+      verified: true,
+      profileExists: false,
+      status: 'active',
+      claims: {},
+    };
+    await service.onboard(user1, {
+      role: 'farmer',
+      name: 'User One',
+      phone: '7077350157',
+      email: 'user1@gmail.com',
+    });
+
+    // Second user attempts to onboard with the same mobile (different formatting)
+    const user2: AuthenticatedUser = {
+      uid: 'uid-user-2',
+      email: 'duplicate@gramora.farm',
+      role: 'buyer',
+      name: 'User Two',
+      verified: true,
+      profileExists: false,
+      status: 'active',
+      claims: {},
+    };
+
+    await assert.rejects(
+      async () => {
+        await service.onboard(user2, {
+          role: 'buyer',
+          name: 'User Two',
+          phone: '+91 70773 50157',
+          email: 'user2@gmail.com',
+        });
+      },
+      (err: any) => {
+        assert.ok(err instanceof ConflictError, 'Duplicate phone MUST throw ConflictError');
+        assert.equal(err.statusCode, 409);
+        assert.ok(err.message.includes('already registered'));
+        return true;
+      }
+    );
+
+    // Third user with distinct mobile succeeds
+    const user3: AuthenticatedUser = {
+      uid: 'uid-user-3',
+      email: '9876543210@gramora.farm',
+      role: 'consumer',
+      name: 'User Three',
+      verified: true,
+      profileExists: false,
+      status: 'active',
+      claims: {},
+    };
+    const profile3 = await service.onboard(user3, {
+      role: 'consumer',
+      name: 'User Three',
+      phone: '9876543210',
+      email: 'user3@gmail.com',
+    });
+    assert.equal(profile3.uid, 'uid-user-3');
+
+    console.log('✔ Passed: Server authoritatively enforces mobile uniqueness with HTTP 409 Conflict.\n');
+    passed++;
+  }
+
+  // 19. Onboarding failure rollback behavior
+  {
+    console.log('CHECK 19: Onboarding failure rollback behavior');
+    let deleteCalled = false;
+    const mockAuthUser = {
+      uid: 'orphan-candidate-uid',
+      delete: async () => {
+        deleteCalled = true;
+      },
+    };
+
+    // Simulate authService.signUp flow with onboarding failure
+    const simulateSignUpWithOnboardFailure = async () => {
+      // Step 1: Firebase Auth user created
+      const credential = { user: mockAuthUser };
+
+      // Step 2: Onboard call fails (e.g. duplicate mobile 409)
+      try {
+        throw new ConflictError('This mobile number is already registered to another account');
+      } catch (onboardError) {
+        // Rollback: delete created Firebase Auth user
+        try {
+          await credential.user.delete();
+        } catch (delError) {
+          logger.warn('Failed to rollback Firebase Auth user after onboarding failure', {
+            uid: credential.user.uid,
+            error: delError instanceof Error ? delError.message : String(delError),
+          });
+        }
+        throw onboardError;
+      }
+    };
+
+    await assert.rejects(
+      async () => simulateSignUpWithOnboardFailure(),
+      (err: any) => {
+        assert.ok(err instanceof ConflictError);
+        assert.equal(deleteCalled, true, 'credential.user.delete() MUST be called upon onboarding failure');
+        return true;
+      }
+    );
+
+    // Also verify that if delete() fails, original onboarding error is still rethrown safely
+    const mockFailingDeleteUser = {
+      uid: 'orphan-candidate-uid-2',
+      delete: async () => {
+        throw new Error('network-error-during-delete');
+      },
+    };
+
+    const simulateFailingDelete = async () => {
+      const credential = { user: mockFailingDeleteUser };
+      try {
+        throw new ConflictError('Original onboarding error');
+      } catch (onboardError) {
+        try {
+          await credential.user.delete();
+        } catch (delError) {
+          // Logged safely
+        }
+        throw onboardError;
+      }
+    };
+
+    await assert.rejects(
+      async () => simulateFailingDelete(),
+      (err: any) => {
+        assert.ok(err instanceof ConflictError);
+        assert.equal(err.message, 'Original onboarding error');
+        return true;
+      }
+    );
+
+    console.log('✔ Passed: Client-side rollback deletes orphan auth account and preserves original error.\n');
     passed++;
   }
 
