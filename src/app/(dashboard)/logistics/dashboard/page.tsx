@@ -11,9 +11,11 @@ import { StatusBadge } from '@/components/data-display/status-badge';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useRoutes } from '@/hooks/useRoutes';
+import { useAuth } from '@/hooks/useAuth';
 import { Truck, Navigation, Fuel, Leaf, ArrowRight, CheckCircle2, Clock } from 'lucide-react';
 
 export default function LogisticsDashboardPage() {
+  const { user } = useAuth();
   const { routes } = useRoutes();
   const activeRoute = routes[0];
 
@@ -25,7 +27,11 @@ export default function LogisticsDashboardPage() {
           <div>
             <h2 className="text-h3 font-bold text-foreground">Fleet Operations Overview</h2>
             <p className="text-body-sm text-foreground/60 mt-0.5">
-              AgroTransit Cold-Chain Logistics Hub • Chakan MIDC / Western Corridor
+              {user?.organization
+                ? `${user.organization} • ${user.location?.district ? `${user.location.district}, ` : ''}${user.location?.state || 'Cold-Chain Fleet Command'}`
+                : user?.name
+                ? `${user.name} • Cold-Chain Fleet Command`
+                : 'Cold-Chain Fleet Command'}
             </p>
           </div>
           <Link href="/logistics/routes">

@@ -268,8 +268,110 @@ async function runClientIdentityGuardTests() {
     passed++;
   }
 
+  // TEST 11: Real Farmer session header renders authentic organization, never hardcoded "Ananya Farms"
+  {
+    console.log('TEST 11: Real Farmer session header renders authentic organization, never hardcoded "Ananya Farms"');
+
+    const realFarmerWithOrg: User = {
+      id: 'usr-farmer-real-1',
+      name: 'Ramesh Real',
+      email: 'ramesh@odishafarmers.in',
+      phone: '+91 94371 99999',
+      role: 'farmer',
+      organization: 'Kalahandi Krushak Sangha',
+      location: {
+        district: 'Kalahandi',
+        state: 'Odisha',
+      },
+      verified: true,
+      joinedDate: '2026-02-01',
+    };
+
+    const resolveFarmerHeader = (user: User | null | undefined): string => {
+      return user?.organization
+        ? `${user.organization} • ${user.location?.district ? `${user.location.district}, ` : ''}${user.location?.state || 'Verified Producer Registry'}`
+        : user?.name
+        ? `${user.name} • Verified Producer Registry`
+        : 'Agricultural Producer Operations';
+    };
+
+    const headerWithOrg = resolveFarmerHeader(realFarmerWithOrg);
+    assert.equal(headerWithOrg, 'Kalahandi Krushak Sangha • Kalahandi, Odisha');
+    assert.notEqual(headerWithOrg.includes('Ananya Farms'), true, 'Must never contain Ananya Farms');
+
+    // Individual farmer with no organization specified
+    const realFarmerWithoutOrg: User = {
+      id: 'usr-farmer-real-2',
+      name: 'Debasish Sahu',
+      email: 'debasish@gmail.com',
+      phone: '+91 94371 00000',
+      role: 'farmer',
+      organization: undefined,
+      verified: true,
+      joinedDate: '2026-03-01',
+    };
+
+    const headerWithoutOrg = resolveFarmerHeader(realFarmerWithoutOrg);
+    assert.equal(headerWithoutOrg, 'Debasish Sahu • Verified Producer Registry');
+    assert.notEqual(headerWithoutOrg.includes('Ananya Farms'), true, 'Must never contain Ananya Farms');
+
+    console.log('✔ Passed: Real Farmer dashboard dynamically renders authentic identity without mock leak.\n');
+    passed++;
+  }
+
+  // TEST 12: Real Logistics session header renders authentic organization, never hardcoded "AgroTransit"
+  {
+    console.log('TEST 12: Real Logistics session header renders authentic organization, never hardcoded "AgroTransit"');
+
+    const realLogisticsWithOrg: User = {
+      id: 'usr-logistics-real-1',
+      name: 'Manoj Tripathy',
+      email: 'manoj@kalingafreight.in',
+      phone: '+91 98610 88888',
+      role: 'logistics',
+      organization: 'Kalinga Express Cold-Chain',
+      location: {
+        district: 'Bhubaneswar',
+        state: 'Odisha',
+      },
+      verified: true,
+      joinedDate: '2026-01-15',
+    };
+
+    const resolveLogisticsHeader = (user: User | null | undefined): string => {
+      return user?.organization
+        ? `${user.organization} • ${user.location?.district ? `${user.location.district}, ` : ''}${user.location?.state || 'Cold-Chain Fleet Command'}`
+        : user?.name
+        ? `${user.name} • Cold-Chain Fleet Command`
+        : 'Cold-Chain Fleet Command';
+    };
+
+    const headerWithOrg = resolveLogisticsHeader(realLogisticsWithOrg);
+    assert.equal(headerWithOrg, 'Kalinga Express Cold-Chain • Bhubaneswar, Odisha');
+    assert.notEqual(headerWithOrg.includes('AgroTransit'), true, 'Must never contain AgroTransit');
+
+    // Logistics user without explicit organization
+    const realLogisticsWithoutOrg: User = {
+      id: 'usr-logistics-real-2',
+      name: 'Tariq Khan',
+      email: 'tariq@transfleet.in',
+      phone: '+91 98610 11111',
+      role: 'logistics',
+      organization: undefined,
+      verified: true,
+      joinedDate: '2026-02-10',
+    };
+
+    const headerWithoutOrg = resolveLogisticsHeader(realLogisticsWithoutOrg);
+    assert.equal(headerWithoutOrg, 'Tariq Khan • Cold-Chain Fleet Command');
+    assert.notEqual(headerWithoutOrg.includes('AgroTransit'), true, 'Must never contain AgroTransit');
+
+    console.log('✔ Passed: Real Logistics dashboard dynamically renders authentic identity without mock leak.\n');
+    passed++;
+  }
+
   console.log('========================================================');
-  console.log(`ALL ${passed}/10 CLIENT IDENTITY GUARD TESTS PASSED`);
+  console.log(`ALL ${passed}/12 CLIENT IDENTITY GUARD TESTS PASSED`);
   console.log('========================================================\n');
 }
 

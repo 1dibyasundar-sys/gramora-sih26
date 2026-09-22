@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { useOrders } from '@/hooks/useOrders';
 import { useInventory } from '@/hooks/useProducts';
 import { useForecast } from '@/hooks/useForecast';
+import { useAuth } from '@/hooks/useAuth';
 import { Order, InventoryItem } from '@/types';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import {
@@ -28,6 +29,7 @@ import {
 } from 'lucide-react';
 
 export default function FarmerDashboardPage() {
+  const { user } = useAuth();
   const { orders } = useOrders('farmer');
   const { inventory } = useInventory();
   const { forecasts } = useForecast();
@@ -97,7 +99,11 @@ export default function FarmerDashboardPage() {
           <div>
             <h2 className="text-h3 font-bold text-foreground">Operational Overview</h2>
             <p className="text-body-sm text-foreground/60 mt-0.5">
-              Ananya Farms • Dindori, Nashik (Verified Producer Registry)
+              {user?.organization
+                ? `${user.organization} • ${user.location?.district ? `${user.location.district}, ` : ''}${user.location?.state || 'Verified Producer Registry'}`
+                : user?.name
+                ? `${user.name} • Verified Producer Registry`
+                : 'Agricultural Producer Operations'}
             </p>
           </div>
           <div className="flex items-center gap-2.5">
