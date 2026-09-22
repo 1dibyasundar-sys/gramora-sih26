@@ -28,8 +28,9 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
           ref={ref}
           rows={rows}
           disabled={disabled}
+          style={{ colorScheme: 'dark', ...props.style }}
           className={cn(
-            'w-full bg-surface-primary/80 border border-surface-border text-foreground placeholder:text-foreground/40 text-body-sm rounded-md px-3.5 py-2.5 transition-all duration-200 outline-none focus:border-primary-500/80 focus:ring-1 focus:ring-primary-500/80 focus:text-foreground disabled:bg-surface-elevated/40 disabled:text-foreground/40 disabled:opacity-75 disabled:cursor-not-allowed read-only:bg-surface-secondary/50 read-only:text-foreground/70 resize-y shadow-subtle',
+            'w-full bg-surface-primary/80 border border-surface-border text-foreground placeholder:text-foreground/40 text-body-sm rounded-md px-3.5 py-2.5 backdrop-blur-sm transition-all duration-200 outline-none focus:border-primary-500/80 focus:ring-1 focus:ring-primary-500/80 focus:text-foreground disabled:bg-surface-elevated/40 disabled:text-foreground/40 disabled:opacity-75 disabled:cursor-not-allowed read-only:bg-surface-secondary/50 read-only:text-foreground/70 resize-y shadow-subtle',
             error && 'border-error focus:border-error focus:ring-error',
             className
           )}

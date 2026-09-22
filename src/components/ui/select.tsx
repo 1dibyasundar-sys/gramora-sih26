@@ -36,9 +36,9 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
             id={selectId}
             ref={ref}
             disabled={disabled}
-            style={{ colorScheme: 'dark' }}
+            style={{ colorScheme: 'dark', ...props.style }}
             className={cn(
-              'w-full appearance-none bg-surface-primary/80 border border-surface-border text-foreground text-body-sm rounded-md px-3.5 py-2.5 pr-10 transition-all duration-200 outline-none focus:border-primary-500/80 focus:ring-1 focus:ring-primary-500/80 focus:text-foreground disabled:bg-surface-elevated/40 disabled:text-foreground/40 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer shadow-subtle',
+              'w-full appearance-none bg-surface-primary/80 border border-surface-border text-foreground text-body-sm rounded-md px-3.5 py-2.5 pr-10 backdrop-blur-sm transition-all duration-200 outline-none focus:border-primary-500/80 focus:ring-1 focus:ring-primary-500/80 focus:text-foreground disabled:bg-surface-elevated/40 disabled:text-foreground/40 disabled:opacity-75 disabled:cursor-not-allowed cursor-pointer shadow-subtle',
               error && 'border-error focus:border-error focus:ring-error',
               className
             )}
@@ -49,6 +49,10 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
                 key={opt.value}
                 value={opt.value}
                 disabled={opt.disabled}
+                style={{
+                  backgroundColor: '#0e1713',
+                  color: opt.disabled ? 'rgba(255, 255, 255, 0.4)' : '#f2f7f4',
+                }}
                 className={opt.disabled ? 'bg-[#0e1713] text-foreground/40' : 'bg-[#0e1713] text-foreground'}
               >
                 {opt.label}

@@ -3,14 +3,19 @@
 @tailwind utilities;
 
 :root {
+  color-scheme: dark;
+
   /* Color Foundation - Deep Agricultural High-Tech Dark */
   --background: #080d0a;
   --foreground: #f2f7f4;
 
   /* Surfaces */
   --surface-primary: #0e1713;
+  --surface-primary-rgb: 14, 23, 19;
   --surface-secondary: #14201a;
+  --surface-secondary-rgb: 20, 32, 26;
   --surface-elevated: #1a2a22;
+  --surface-elevated-rgb: 26, 42, 34;
   --surface-subtle: rgba(255, 255, 255, 0.035);
   --surface-border: rgba(255, 255, 255, 0.08);
 
@@ -63,12 +68,16 @@
 
 /* Light Theme Variable Overrides (Accessible Alternative) */
 [data-theme="light"] {
+  color-scheme: light;
   --background: #f8faf8;
   --foreground: #0f1c15;
 
   --surface-primary: #ffffff;
+  --surface-primary-rgb: 255, 255, 255;
   --surface-secondary: #f0f4f1;
+  --surface-secondary-rgb: 240, 244, 241;
   --surface-elevated: #ffffff;
+  --surface-elevated-rgb: 255, 255, 255;
   --surface-subtle: rgba(0, 0, 0, 0.025);
   --surface-border: rgba(0, 0, 0, 0.09);
 
@@ -115,6 +124,26 @@ body {
 :focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
+}
+
+/* Universal Dark Form Controls Reset & Autofill protection */
+input, textarea, select {
+  color-scheme: dark;
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--foreground);
+  -webkit-box-shadow: 0 0 0px 1000px #0e1713 inset;
+  box-shadow: 0 0 0px 1000px #0e1713 inset;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* Glassmorphism utility components */

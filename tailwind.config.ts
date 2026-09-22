@@ -15,9 +15,9 @@ const config: Config = {
         foreground: 'var(--foreground)',
         
         surface: {
-          primary: 'var(--surface-primary)',
-          secondary: 'var(--surface-secondary)',
-          elevated: 'var(--surface-elevated)',
+          primary: 'rgba(var(--surface-primary-rgb, 14, 23, 19), <alpha-value>)',
+          secondary: 'rgba(var(--surface-secondary-rgb, 20, 32, 26), <alpha-value>)',
+          elevated: 'rgba(var(--surface-elevated-rgb, 26, 42, 34), <alpha-value>)',
           subtle: 'var(--surface-subtle)',
           border: 'var(--surface-border)',
         },

@@ -27,7 +27,8 @@ export function SearchInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-surface-primary/80 border border-surface-border text-foreground placeholder:text-foreground/40 text-body-sm rounded-xl pl-10 pr-10 py-2.5 outline-none transition-all duration-200 focus:border-primary-500/80 focus:ring-1 focus:ring-primary-500/80 hover:border-primary-500/30 shadow-subtle"
+        style={{ colorScheme: 'dark' }}
+        className="w-full bg-surface-primary/80 border border-surface-border text-foreground placeholder:text-foreground/40 text-body-sm rounded-xl pl-10 pr-10 py-2.5 backdrop-blur-sm outline-none transition-all duration-200 focus:border-primary-500/80 focus:ring-1 focus:ring-primary-500/80 hover:border-primary-500/30 shadow-subtle"
       />
       {value && (
         <button
