@@ -131,11 +131,14 @@ export function getCloudinaryConfig(): CloudinaryConfig {
   };
 }
 
-export interface RazorpayConfig {
+export interface RazorpayCheckoutConfig {
   keyId: string;
   keySecret: string;
-  webhookSecret: string;
   mode: 'test' | 'live';
+}
+
+export interface RazorpayConfig extends RazorpayCheckoutConfig {
+  webhookSecret: string;
 }
 
 /**
@@ -187,7 +190,7 @@ export function getRazorpayConfig(): RazorpayConfig {
  * Returns validated Razorpay checkout credentials (Key ID and Key Secret). Throws if unconfigured.
  * Never exposes secret values in error messages.
  */
-export function getRazorpayCheckoutConfig(): { keyId: string; keySecret: string; mode: 'test' | 'live' } {
+export function getRazorpayCheckoutConfig(): RazorpayCheckoutConfig {
   const config = getServerConfig();
   if (!isRazorpayCheckoutConfigured()) {
     throw new Error(

@@ -1,9 +1,8 @@
 import crypto from 'crypto';
 import {
-  getRazorpayConfig,
-  isRazorpayConfigured,
+  getRazorpayCheckoutConfig,
   isRazorpayCheckoutConfigured,
-  RazorpayConfig,
+  RazorpayCheckoutConfig,
 } from '../config/env';
 import { AppError, ServiceUnavailableError } from './errors';
 import { logger } from './logger';
@@ -25,9 +24,9 @@ export interface RazorpayOrderResult {
 }
 
 export class RazorpayClient {
-  private configSupplier: () => RazorpayConfig;
+  private configSupplier: () => RazorpayCheckoutConfig;
 
-  constructor(configSupplier: () => RazorpayConfig = getRazorpayConfig) {
+  constructor(configSupplier: () => RazorpayCheckoutConfig = getRazorpayCheckoutConfig) {
     this.configSupplier = configSupplier;
   }
 

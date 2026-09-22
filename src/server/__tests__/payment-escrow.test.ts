@@ -1226,6 +1226,98 @@ async function runPaymentEscrowTests() {
   console.log('✔ Passed: Funded order safely rejects duplicate payment initiation.');
   passed++;
 
+  // ====================================================
+  // 29. RazorpayClient default configSupplier works without WEBHOOK_SECRET
+  // ====================================================
+  console.log('TEST 29: RazorpayClient default configSupplier resolves when KEY_ID + KEY_SECRET exist and WEBHOOK_SECRET is absent');
+  {
+    process.env.RAZORPAY_KEY_ID = TEST_KEY_ID;
+    process.env.RAZORPAY_KEY_SECRET = TEST_KEY_SECRET;
+    delete process.env.RAZORPAY_WEBHOOK_SECRET;
+    resetServerConfigCache();
+
+    assert.equal(isRazorpayCheckoutConfigured(), true);
+    assert.equal(isRazorpayWebhookConfigured(), false);
+    assert.equal(isRazorpayConfigured(), false);
+
+    // Default RazorpayClient must resolve checkout config without throwing
+    const client = new RazorpayClient();
+    const resolvedConfig = (client as any).configSupplier();
+    assert.equal(resolvedConfig.keyId, TEST_KEY_ID);
+    assert.equal(resolvedConfig.keySecret, TEST_KEY_SECRET);
+    assert.equal(resolvedConfig.mode, 'test');
+
+    // Restore webhook secret for subsequent checks
+    process.env.RAZORPAY_WEBHOOK_SECRET = TEST_WEBHOOK_SECRET;
+    resetServerConfigCache();
+  }
+  console.log('✔ Passed: RazorpayClient default supplier operates independently of WEBHOOK_SECRET.');
+  passed++;
+
+  // ====================================================
+  // 30. Checkout config still strictly rejects missing KEY_ID or KEY_SECRET
+  // ====================================================
+  console.log('TEST 30: Checkout config rejects missing KEY_ID or KEY_SECRET');
+  {
+    delete process.env.RAZORPAY_KEY_ID;
+    process.env.RAZORPAY_KEY_SECRET = TEST_KEY_SECRET;
+    resetServerConfigCache();
+
+    assert.equal(isRazorpayCheckoutConfigured(), false);
+    assert.throws(
+      () => getRazorpayCheckoutConfig(),
+      (err: Error) => {
+        assert.ok(err.message.includes('Missing RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET'));
+        return true;
+      }
+    );
+
+    const clientMissingKey = new RazorpayClient();
+    assert.throws(
+      () => (clientMissingKey as any).configSupplier(),
+      (err: Error) => {
+        assert.ok(err.message.includes('Missing RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET'));
+        return true;
+      }
+    );
+
+    // Restore keys
+    process.env.RAZORPAY_KEY_ID = TEST_KEY_ID;
+    process.env.RAZORPAY_KEY_SECRET = TEST_KEY_SECRET;
+    resetServerConfigCache();
+  }
+  console.log('✔ Passed: Missing checkout credentials are strictly rejected.');
+  passed++;
+
+  // ====================================================
+  // 31. Webhook configuration still independently requires WEBHOOK_SECRET
+  // ====================================================
+  console.log('TEST 31: Webhook configuration still independently requires WEBHOOK_SECRET');
+  {
+    process.env.RAZORPAY_KEY_ID = TEST_KEY_ID;
+    process.env.RAZORPAY_KEY_SECRET = TEST_KEY_SECRET;
+    delete process.env.RAZORPAY_WEBHOOK_SECRET;
+    resetServerConfigCache();
+
+    assert.equal(isRazorpayCheckoutConfigured(), true);
+    assert.equal(isRazorpayWebhookConfigured(), false);
+    assert.equal(isRazorpayConfigured(), false);
+
+    assert.throws(
+      () => getRazorpayConfig(),
+      (err: Error) => {
+        assert.ok(err.message.includes('Missing RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, or RAZORPAY_WEBHOOK_SECRET'));
+        return true;
+      }
+    );
+
+    // Restore webhook secret
+    process.env.RAZORPAY_WEBHOOK_SECRET = TEST_WEBHOOK_SECRET;
+    resetServerConfigCache();
+  }
+  console.log('✔ Passed: Webhook configuration independently mandates WEBHOOK_SECRET.');
+  passed++;
+
   console.log('\n====================================================');
   console.log(`ALL ${passed}/${passed} PAYMENT & ESCROW TESTS PASSED!`);
   console.log('====================================================\n');
