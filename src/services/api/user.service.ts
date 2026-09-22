@@ -31,6 +31,11 @@ export class ApiUserService implements IUserService {
   }
 
   async switchUserRole(role: UserRole): Promise<User> {
+    const token = this.getAuthToken();
+    if (token) {
+      // In an authenticated session, mock role switching is disallowed; return current authoritative profile
+      return this.getCurrentUser();
+    }
     // Role switching in frontend dev mode delegates to mock service
     return mockUserService.switchUserRole(role);
   }

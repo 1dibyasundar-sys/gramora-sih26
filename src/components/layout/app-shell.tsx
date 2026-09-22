@@ -19,7 +19,8 @@ export interface AppShellProps {
 export function AppShell({ children, title }: AppShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { role } = useAuth();
+  const { role, user, isFirebaseConfigured } = useAuth();
+  const showRoleSwitcher = !(isFirebaseConfigured && user);
 
   const getDashboardPath = () => {
     if (role === 'farmer' || role === 'fpo') return '/farmer/dashboard';
@@ -63,9 +64,11 @@ export function AppShell({ children, title }: AppShellProps) {
         />
 
         {/* Mobile Demo Role Switcher Ribbon */}
-        <div className="xl:hidden px-4 py-2 bg-surface-primary/60 border-b border-surface-border">
-          <RoleSwitcherBadge />
-        </div>
+        {showRoleSwitcher && (
+          <div className="xl:hidden px-4 py-2 bg-surface-primary/60 border-b border-surface-border">
+            <RoleSwitcherBadge />
+          </div>
+        )}
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto animate-in fade-in duration-200">
           {children}

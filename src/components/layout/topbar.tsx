@@ -16,8 +16,9 @@ export interface TopbarProps {
 }
 
 export function Topbar({ onOpenMobileMenu, title }: TopbarProps) {
-  const { user } = useAuth();
+  const { user, isFirebaseConfigured } = useAuth();
   const { t } = useTranslation();
+  const showRoleSwitcher = !(isFirebaseConfigured && user);
 
   return (
     <header className="sticky top-0 z-30 h-16 sm:h-20 w-full glass-header border-b border-surface-border px-4 sm:px-6 flex items-center justify-between gap-4">
@@ -42,9 +43,11 @@ export function Topbar({ onOpenMobileMenu, title }: TopbarProps) {
       {/* Right side: Demo Role Switcher, Language Selector, Notifications, Profile */}
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Role Switcher Bar */}
-        <div className="hidden xl:block">
-          <RoleSwitcherBadge />
-        </div>
+        {showRoleSwitcher && (
+          <div className="hidden xl:block">
+            <RoleSwitcherBadge />
+          </div>
+        )}
 
         {/* Language Selector */}
         <LanguageSelector />

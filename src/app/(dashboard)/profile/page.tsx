@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/layout/app-shell';
 import { useAuth } from '@/hooks/useAuth';
 import { Input } from '@/components/ui/input';
@@ -24,22 +24,36 @@ export default function ProfilePage() {
   const { success } = useToast();
   const { t, language, setLanguage, supportedLanguages } = useTranslation();
 
-  const [name, setName] = useState(user?.name || 'Ramesh Patel');
-  const [email, setEmail] = useState(user?.email || 'ramesh.patel@ananyafarms.mock');
-  const [phone, setPhone] = useState(user?.phone || '+91 98230 45678');
-  const [organization, setOrganization] = useState(user?.organization || 'Ananya Farms');
+  const [name, setName] = useState(user?.name ?? '');
+  const [email, setEmail] = useState(user?.email ?? '');
+  const [phone, setPhone] = useState(user?.phone ?? '');
+  const [organization, setOrganization] = useState(user?.organization ?? '');
   const [village, setVillage] = useState(
-    user?.location?.villageOrCity || 'Dindori'
+    user?.location?.villageOrCity ?? ''
   );
   const [district, setDistrict] = useState(
-    user?.location?.district || 'Nashik'
+    user?.location?.district ?? ''
   );
   const [state, setState] = useState(
-    user?.location?.state || 'Maharashtra'
+    user?.location?.state ?? ''
   );
   const [pincode, setPincode] = useState(
-    user?.location?.pincode || '422202'
+    user?.location?.pincode ?? ''
   );
+
+  // Synchronize local editable form state when authoritative user identity changes
+  useEffect(() => {
+    if (!user) return;
+    setName(user.name ?? '');
+    setEmail(user.email ?? '');
+    setPhone(user.phone ?? '');
+    setOrganization(user.organization ?? '');
+    setVillage(user.location?.villageOrCity ?? '');
+    setDistrict(user.location?.district ?? '');
+    setState(user.location?.state ?? '');
+    setPincode(user.location?.pincode ?? '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   // Preferences toggles
   const [smsAlerts, setSmsAlerts] = useState(true);
@@ -54,7 +68,7 @@ export default function ProfilePage() {
       name,
       email,
       phone,
-      organization,
+      organization: organization || undefined,
       location: { villageOrCity: village, district, state, pincode },
     });
     setLoading(false);
@@ -66,6 +80,9 @@ export default function ProfilePage() {
     success(t('profile.languageTitle') + ': ' + code.toUpperCase());
   };
 
+  const registrationId = user?.kisanId || user?.fpoRegNumber || user?.gstin;
+  const displayRole = (user?.role || role).toUpperCase().replace('_', ' ');
+
   return (
     <AppShell title={t('profile.title')}>
       <div className="max-w-4xl mx-auto space-y-8">
@@ -74,25 +91,27 @@ export default function ProfilePage() {
           <div className="flex items-center gap-4">
             <Avatar
               src={user?.avatarUrl}
-              fallback={name}
+              fallback={name || user?.name || 'U'}
               size="lg"
               status="online"
             />
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-h4 font-bold text-foreground">{name}</h2>
+                <h2 className="text-h4 font-bold text-foreground">{name || user?.name || 'Profile'}</h2>
                 <Badge variant="primary" size="sm">
-                  {role.toUpperCase().replace('_', ' ')}
+                  {displayRole}
                 </Badge>
-                {user?.verified && (
+                {user?.verified === true && (
                   <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-950/50 border border-emerald-500/30 px-2 py-0.5 rounded-full">
                     <CheckCircle2 className="w-3 h-3" /> {t('common.verified')}
                   </span>
                 )}
               </div>
-              <p className="text-body-sm text-foreground/60 mt-0.5">{organization}</p>
+              {organization && (
+                <p className="text-body-sm text-foreground/60 mt-0.5">{organization}</p>
+              )}
               <p className="text-caption text-foreground/50 mt-1">
-                Joined: {user?.joinedDate || '2025-04-12'} • Member ID: {user?.id}
+                Joined: {user?.joinedDate || (user as any)?.createdAt?.slice(0, 10) || 'Recently Joined'} • Member ID: {user?.id || '—'}
               </p>
             </div>
           </div>
@@ -100,7 +119,7 @@ export default function ProfilePage() {
           <div className="text-left sm:text-right">
             <span className="text-caption text-foreground/50 block">Registered Mandi ID:</span>
             <span className="font-mono font-bold text-primary-400 text-body-sm">
-              {user?.kisanId || user?.fpoRegNumber || user?.gstin || 'MH-REG-2026-9901'}
+              {registrationId || 'Not provided'}
             </span>
           </div>
         </div>
@@ -174,7 +193,6 @@ export default function ProfilePage() {
                 label={t('auth.organization')}
                 value={organization}
                 onChange={(e) => setOrganization(e.target.value)}
-                required
               />
             </div>
 

@@ -16,7 +16,12 @@ const ROLES: { key: UserRole; label: string; color: string }[] = [
 ];
 
 export function RoleSwitcherBadge({ className }: { className?: string }) {
-  const { role, switchRole } = useAuth();
+  const { user, role, switchRole, isFirebaseConfigured } = useAuth();
+
+  // If authenticated with a real Firebase session, do not render Demo Role Switcher
+  if (isFirebaseConfigured && user) {
+    return null;
+  }
 
   return (
     <div className={cn('flex items-center gap-1.5 p-1 rounded-xl bg-surface-primary/90 border border-surface-border text-caption', className)}>

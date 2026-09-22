@@ -101,6 +101,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const switchRole = async (newRole: UserRole) => {
+    // In a real Firebase session (Firebase is configured and an authenticated user exists),
+    // switching mock roles must be strictly prevented to ensure client state never replaces authoritative identity.
+    if (isFirebaseConfigured && user) {
+      console.warn(`[useAuth] switchRole ignored: cannot switch mock role in active Firebase session for user ${user.id}`);
+      return;
+    }
+
     setLoading(true);
     const updated = await userService.switchUserRole(newRole);
     setUser(updated);
