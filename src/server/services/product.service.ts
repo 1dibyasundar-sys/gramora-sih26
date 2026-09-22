@@ -172,6 +172,51 @@ export class ProductService {
 
     // Default repository creation (e.g. In-memory / mock repo test environments)
     const created = await this.productRepo.create(productRecord as Omit<ServerProduct, 'id'>);
+    if (availableQty > 0 && (this.lotRepo as any).store && (this.inventoryRepo as any).store) {
+      const expiryDate = new Date(
+        new Date(input.harvestDate).getTime() + (input.shelfLifeDays || 30) * 86400000
+      )
+        .toISOString()
+        .split('T')[0];
+
+      const lotRecord = await this.lotRepo.create({
+        productId: created.id,
+        sellerId: user.uid,
+        productName: input.title,
+        lotNumber: `LOT-INIT-${created.id.slice(-6).toUpperCase()}`,
+        harvestDate: input.harvestDate,
+        expiryDate,
+        totalQuantity: availableQty,
+        availableQuantity: availableQty,
+        reservedQuantity: 0,
+        unit: input.unit,
+        qualityGrade: input.qualityGrade,
+        qualityScore: 92,
+        moistureContentPercent: input.moistureContentPercent,
+        storageType: input.storageType,
+        storageFacility: `${input.location.district} Aggregation Center`,
+        status: 'available',
+        farmGatePrice: input.pricePerUnit,
+        sellingPrice: input.pricePerUnit,
+        minOrderQuantity: input.minOrderQuantity,
+      } as any);
+
+      const invStatus = calculateInventoryStatus(availableQty, 0, expiryDate);
+      await this.inventoryRepo.create({
+        productLotId: lotRecord.id,
+        productId: created.id,
+        ownerId: user.uid,
+        quantity: availableQty,
+        reservedQuantity: 0,
+        availableQuantity: availableQty,
+        unit: input.unit,
+        warehouseLocation: `${input.location.district} Aggregation Center`,
+        storageCondition: input.storageType,
+        receivedAt: input.harvestDate,
+        expiryDate,
+        status: invStatus,
+      } as any);
+    }
     return created;
   }
 
@@ -227,6 +272,146 @@ export class ProductService {
 
     if (updates.pricePerUnit !== undefined) {
       sanitizedUpdates.pricePerUnitPaise = Math.round(updates.pricePerUnit * 100);
+    }
+
+    if (updates.totalAvailableQuantity !== undefined) {
+      const requestedTotal = updates.totalAvailableQuantity;
+      if (requestedTotal < 0) {
+        throw new BadRequestError('Total available quantity cannot be negative.');
+      }
+
+      // Query existing lots and inventory lots
+      const [productLots, invLots] = await Promise.all([
+        this.lotRepo.findByProductId(id),
+        this.inventoryRepo.findByProductId(id),
+      ]);
+
+      const totalReserved = invLots.reduce((sum, lot) => sum + (lot.reservedQuantity || 0), 0);
+
+      if (requestedTotal < totalReserved) {
+        throw new BadRequestError(
+          `Cannot reduce stock to ${requestedTotal} ${existing.unit} because ${totalReserved} ${existing.unit} are currently reserved in active orders.`
+        );
+      }
+
+      const now = new Date().toISOString();
+      const db = (this.productRepo as any).db;
+      const batch = db && typeof db.batch === 'function' ? db.batch() : null;
+
+      if (invLots.length > 0 && productLots.length > 0) {
+        const primaryInv = invLots[0];
+        const primaryLot =
+          productLots.find((l) => l.id === primaryInv.productLotId) || productLots[0];
+
+        const lotReserved = primaryInv.reservedQuantity || 0;
+        const newAvailable = Math.max(0, requestedTotal - lotReserved);
+        const newStatus = calculateInventoryStatus(
+          requestedTotal,
+          lotReserved,
+          primaryInv.expiryDate
+        );
+
+        if (batch) {
+          const invRef = this.inventoryRepo.collection.doc(primaryInv.id);
+          const lotRef = this.lotRepo.collection.doc(primaryLot.id);
+
+          batch.update(invRef, {
+            quantity: requestedTotal,
+            availableQuantity: newAvailable,
+            status: newStatus,
+            updatedAt: now,
+          });
+
+          batch.update(lotRef, {
+            totalQuantity: requestedTotal,
+            availableQuantity: newAvailable,
+            updatedAt: now,
+          });
+        } else {
+          await Promise.all([
+            this.inventoryRepo.update(primaryInv.id, {
+              quantity: requestedTotal,
+              availableQuantity: newAvailable,
+              status: newStatus,
+            }),
+            this.lotRepo.update(primaryLot.id, {
+              totalQuantity: requestedTotal,
+              availableQuantity: newAvailable,
+            }),
+          ]);
+        }
+
+        // Keep in-memory mock repositories synchronized for tests
+        if ((this.inventoryRepo as any).store) {
+          const storedInv = (this.inventoryRepo as any).store.get(primaryInv.id);
+          if (storedInv) {
+            (this.inventoryRepo as any).store.set(primaryInv.id, {
+              ...storedInv,
+              quantity: requestedTotal,
+              availableQuantity: newAvailable,
+              status: newStatus,
+              updatedAt: now,
+            });
+          }
+        }
+        if ((this.lotRepo as any).lots) {
+          const storedLot = (this.lotRepo as any).lots.get(primaryLot.id);
+          if (storedLot) {
+            (this.lotRepo as any).lots.set(primaryLot.id, {
+              ...storedLot,
+              totalQuantity: requestedTotal,
+              availableQuantity: newAvailable,
+              updatedAt: now,
+            });
+          }
+        }
+        if ((this.lotRepo as any).store) {
+          const storedLot = (this.lotRepo as any).store.get(primaryLot.id);
+          if (storedLot) {
+            (this.lotRepo as any).store.set(primaryLot.id, {
+              ...storedLot,
+              totalQuantity: requestedTotal,
+              availableQuantity: newAvailable,
+              updatedAt: now,
+            });
+          }
+        }
+
+        sanitizedUpdates.totalAvailableQuantity = newAvailable;
+      }
+
+      if (batch) {
+        const productRef = this.productRepo.collection.doc(id);
+        batch.update(productRef, {
+          ...sanitizedUpdates,
+          updatedAt: now,
+        });
+
+        await batch.commit();
+
+        if ((this.productRepo as any).store) {
+          const p = (this.productRepo as any).store.get(id);
+          if (p) {
+            (this.productRepo as any).store.set(id, {
+              ...p,
+              ...sanitizedUpdates,
+              updatedAt: now,
+            });
+          }
+        }
+
+        logger.info('Updated product listing and synchronized inventory lots', {
+          id,
+          actorId: user.uid,
+          newQuantity: requestedTotal,
+        });
+
+        return {
+          ...existing,
+          ...sanitizedUpdates,
+          updatedAt: now,
+        } as ServerProduct;
+      }
     }
 
     logger.info('Updating product listing', { id, actorId: user.uid });

@@ -163,7 +163,18 @@ export const CreateProductSchema = z
     tags: z.array(z.string().max(50)).default([]),
     listingStatus: z.enum(['draft', 'active']).default('active'),
   })
-  .strict();
+  .strict()
+  .refine(
+    (data) => {
+      const expiry =
+        new Date(data.harvestDate).getTime() + (data.shelfLifeDays || 30) * 86400000;
+      return expiry > Date.now();
+    },
+    {
+      message: 'Harvest date and shelf life must result in a future expiry date',
+      path: ['harvestDate'],
+    }
+  );
 
 export type CreateProductInput = z.infer<typeof CreateProductSchema>;
 

@@ -31,7 +31,7 @@ export default function NewProductPage() {
   const [marketMandiPrice, setMarketMandiPrice] = useState('');
   const [minOrderQuantity, setMinOrderQuantity] = useState('50');
   const [totalAvailableQuantity, setTotalAvailableQuantity] = useState('2000');
-  const [harvestDate, setHarvestDate] = useState('2026-03-20');
+  const [harvestDate, setHarvestDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [shelfLifeDays, setShelfLifeDays] = useState('30');
   const [qualityGrade, setQualityGrade] = useState<QualityGrade>('Grade A');
   const [storageType, setStorageType] = useState<StorageType>('Ambient Warehouse');
